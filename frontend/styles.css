@@ -353,6 +353,15 @@ body {
     border: 0;
 }
 
+/* 组卷与考试页：当前页全选 + 翻页按钮，宽度不足时自动换行 */
+.question-page-toolbar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.question-page-toolbar .d-flex.align-items-center.gap-2 {
+    flex-shrink: 0;
+}
+
 /* ================================
    组卷与考试页：筛选区（两列/一行两项）
    - label 在左
