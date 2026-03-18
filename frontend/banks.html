@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题库管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="bg-body-tertiary">
+<div class="container py-4">
+    <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center p-4 rounded-4 hero shadow-sm mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-folder-check me-2"></i>题库管理
+            </h1>
+            <p class="mb-0 text-light-emphasis">新增、编辑、删除题库，并支持上传知识文件</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <a class="btn btn-outline-light" href="./index.html">
+                <i class="bi bi-house-door me-1"></i><span>返回首页</span>
+            </a>
+            <a class="btn btn-light" href="./exam.html">
+                <i class="bi bi-ui-checks-grid me-1"></i><span>去组卷考试</span>
+            </a>
+            <a id="userArea" class="btn btn-outline-light text-nowrap" href="./login.html">
+                <i class="bi bi-person-circle me-1"></i><span id="userAreaText">登录/注册</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <section class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">
+                        <i class="bi bi-plus-square-dotted me-2 text-primary"></i>新增题库
+                    </h2>
+            <form id="createForm">
+                <div class="mb-3">
+                    <input id="createName" class="form-control" placeholder="题库名称" required>
+                </div>
+                <div class="mb-3">
+                    <textarea id="createDesc" class="form-control" placeholder="题库描述"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">知识文件（可选，支持批量）</label>
+                    <input id="createFile" class="form-control" type="file" multiple accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif">
+                    <div class="form-text">可一次选择多个文件，若包含图片将自动使用第一张图作为封面。</div>
+                </div>
+                <button class="btn btn-primary w-100" type="submit">创建题库</button>
+            </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                        <h2 class="h5 mb-0">
+                            <i class="bi bi-collection me-2 text-primary"></i>题库列表
+                        </h2>
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <div id="bankUsage" class="usage-progress-wrap" style="min-width: 140px;">当前用量：--</div>
+                            <span id="bankCount" class="badge text-bg-light">0 个题库</span>
+                        </div>
+                    </div>
+                    <div id="bankList" class="d-grid gap-3"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="msg" class="alert alert-success mt-3 d-none py-2 mb-0" role="alert"></div>
+</div>
+
+<button id="uploadTaskFab" type="button" class="upload-task-fab d-none" aria-label="查看上传任务">
+    上传
+    <span id="uploadTaskFabCount" class="upload-task-fab-count">0</span>
+</button>
+
+<div id="uploadTaskModalBackdrop" class="upload-task-backdrop d-none">
+    <div class="upload-task-modal-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h3 class="h6 mb-0">上传任务</h3>
+            <button id="closeUploadTaskModalBtn" type="button" class="btn btn-sm btn-outline-secondary">关闭</button>
+        </div>
+        <div id="uploadTaskList" class="d-grid gap-2"></div>
+    </div>
+</div>
+
+<script src="./api-client.js" defer></script>
+<script src="./bind-phone-modal.js" defer></script>
+<script src="./plan-config.js" defer></script>
+<script src="./banks.js" defer></script>
+</body>
+</html>

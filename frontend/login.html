@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 小白塔云题库</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="bg-body-tertiary">
+<div class="container py-4 py-lg-5">
+    <div class="auth-shell">
+        <section class="auth-brand-panel">
+            <div class="auth-brand-content">
+                <a class="btn btn-outline-light btn-sm mb-4" href="./index.html">
+                    <i class="bi bi-house-door me-1"></i><span>返回首页</span>
+                </a>
+                <h1 class="auth-brand-title">
+                    <i class="bi bi-mortarboard-fill me-2"></i>小白塔云题库
+                </h1>
+                <div class="auth-brand-points">
+                    <div>一站式考试闭环：组卷开考、自动/人工阅卷、成绩报表</div>
+                    <div>题库管理更高效：分类标签、批量导入、题型组合与随机抽题</div>
+                    <div>稳定可靠更安全：权限隔离、登录保护、短信/图形验证码防刷</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="auth-card">
+            <div class="auth-card-header">
+                <h2 class="mb-1">欢迎登录</h2>
+                <div class="small text-secondary">请选择登录方式</div>
+            </div>
+            <div class="auth-tabs" role="tablist" aria-label="登录方式">
+                <button class="auth-tab-btn active" type="button" data-auth-tab="phoneLogin">
+                    <i class="bi bi-phone me-1"></i><span>手机号登录</span>
+                </button>
+                <button class="auth-tab-btn" type="button" data-auth-tab="login">
+                    <i class="bi bi-person-badge me-1"></i><span>账号登录</span>
+                </button>
+                <button class="auth-tab-btn" type="button" data-auth-tab="register">
+                    <i class="bi bi-person-plus me-1"></i><span>注册账号</span>
+                </button>
+            </div>
+
+            <div class="auth-tab-panel" data-auth-panel="phoneLogin">
+                <form id="phoneLoginForm" class="d-grid gap-2 mt-3">
+                    <input id="phoneLoginPhone" class="form-control" placeholder="手机号" required maxlength="11">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="position-relative flex-grow-1">
+                            <canvas id="captchaCanvas" width="120" height="40" class="border rounded" title="点击刷新"></canvas>
+                            <input id="captchaInput" class="form-control mt-1" placeholder="请输入上图验证码" maxlength="4" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <input id="phoneLoginCode" class="form-control" placeholder="短信验证码" maxlength="6">
+                        <button id="sendPhoneLoginSmsBtn" class="btn btn-outline-secondary flex-shrink-0" type="button" disabled>获取验证码</button>
+                    </div>
+                    <button id="phoneLoginBtn" class="btn btn-primary" type="submit">
+                        <i class="bi bi-box-arrow-in-right me-1"></i><span>登录</span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="auth-tab-panel d-none" data-auth-panel="login">
+                <form id="loginForm" class="d-grid gap-2 mt-3">
+                    <input id="loginUsername" class="form-control" placeholder="用户名" required>
+                    <input id="loginPassword" class="form-control" type="password" placeholder="密码" required>
+                    <button id="loginBtn" class="btn btn-primary" type="submit">
+                        <i class="bi bi-box-arrow-in-right me-1"></i><span>登录</span>
+                    </button>
+                    <button id="wechatStartBtn" class="btn btn-success d-none" type="button" style="display: none !important;">
+                        <i class="bi bi-wechat me-1"></i><span>微信登录</span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="auth-tab-panel d-none" data-auth-panel="register">
+                <form id="registerForm" class="d-grid gap-2 mt-3">
+                    <input id="registerUsername" class="form-control" placeholder="用户名(3-32位)" required>
+                    <input id="registerPassword" class="form-control" type="password" placeholder="密码(6位以上)" required>
+                    <input id="registerPasswordConfirm" class="form-control" type="password" placeholder="再次输入密码" required>
+                    <button id="registerBtn" class="btn btn-outline-primary" type="submit">
+                        <i class="bi bi-check2-circle me-1"></i><span>注册并登录</span>
+                    </button>
+                </form>
+            </div>
+
+            <div id="msg" class="alert alert-success mt-3 d-none py-2 mb-0" role="alert"></div>
+        </section>
+    </div>
+</div>
+
+<div id="wechatQrModalBackdrop" class="upload-task-backdrop d-none">
+    <div class="upload-task-modal-card auth-modal-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h3 class="h6 mb-0">
+                <i class="bi bi-qr-code me-1"></i><span>微信扫码登录</span>
+            </h3>
+            <button id="closeWechatQrModalBtn" type="button" class="btn btn-sm btn-outline-secondary">关闭</button>
+        </div>
+        <div id="wechatQrBox" class="small text-secondary auth-wechat-box">正在生成扫码链接...</div>
+        <div class="small text-secondary mt-2">请在微信中完成扫码，系统将自动进入手机号验证步骤。</div>
+    </div>
+</div>
+
+<div id="wechatBindModalBackdrop" class="upload-task-backdrop d-none">
+    <div class="upload-task-modal-card auth-modal-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h3 class="h6 mb-0">
+                <i class="bi bi-phone-vibrate me-1"></i><span>手机号验证并绑定微信</span>
+            </h3>
+            <button id="closeWechatBindModalBtn" type="button" class="btn btn-sm btn-outline-secondary">关闭</button>
+        </div>
+        <form id="wechatVerifyForm" class="d-grid gap-2">
+            <input id="wechatSessionToken" class="form-control" placeholder="扫码会话Token" readonly>
+            <input id="wechatPhone" class="form-control" placeholder="手机号">
+            <div class="d-flex gap-2">
+                <input id="wechatSmsCode" class="form-control" placeholder="短信验证码">
+                <button id="sendSmsBtn" class="btn btn-outline-secondary flex-shrink-0" type="button">发送验证码</button>
+            </div>
+            <button id="wechatVerifyBtn" class="btn btn-primary" type="submit">验证并登录</button>
+        </form>
+    </div>
+</div>
+<script src="./api-client.js" defer></script>
+<script src="./bind-phone-modal.js" defer></script>
+<script src="./login.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 - 小白塔云题库</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="bg-body-tertiary">
+<div class="container py-4">
+    <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center p-4 rounded-4 hero shadow-sm mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-person-circle me-2"></i>个人中心
+            </h1>
+            <p class="mb-0 text-light-emphasis">账号信息与版本权益</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <a class="btn btn-outline-light" href="./index.html">
+                <i class="bi bi-house-door me-1"></i><span>返回首页</span>
+            </a>
+            <a class="btn btn-light" href="./banks.html">
+                <i class="bi bi-folder-check me-1"></i><span>题库管理</span>
+            </a>
+            <a class="btn btn-outline-light" href="./exam.html">
+                <i class="bi bi-ui-checks-grid me-1"></i><span>组卷与考试</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">
+                        <i class="bi bi-person-badge me-2 text-primary"></i>账号信息
+                    </h2>
+                    <div id="userInfo" class="small text-secondary">加载中...</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">
+                        <i class="bi bi-gem me-2 text-primary"></i>当前版本与权益
+                    </h2>
+                    <div id="planInfo" class="small text-secondary">加载中...</div>
+                    <div id="usageInfo" class="mt-3 pt-3 border-top small text-secondary d-none">
+                        <div id="trialCountdown" class="alert alert-warning py-2 px-3 small d-none mb-3">
+                            试用版剩余 30 天。
+                        </div>
+                        <div class="mb-3">
+                            <strong class="d-block mb-1">知识文件用量</strong>
+                            <div id="usageStorage" style="min-width: 160px;"></div>
+                        </div>
+                        <div class="mb-3">
+                            <strong class="d-block mb-1">题库用量</strong>
+                            <div id="usageBanks" style="min-width: 160px;"></div>
+                        </div>
+                        <div>
+                            <strong class="d-block mb-1">题目用量</strong>
+                            <div id="usageQuestions" style="min-width: 160px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="card border-0 shadow-sm plan-section-card">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">
+                        <i class="bi bi-currency-yen me-2 text-primary"></i>选择版本与续费周期
+                    </h2>
+                    <p class="text-secondary small mb-4">选择续费周期可享优惠，升级后立即生效。</p>
+                    <div class="plan-period-tabs mb-4" role="tablist">
+                        <button type="button" class="plan-period-tab active" data-period="monthly" aria-selected="true">月付</button>
+                        <button type="button" class="plan-period-tab" data-period="quarterly">季付 <span class="badge-save">省15%</span></button>
+                        <button type="button" class="plan-period-tab" data-period="yearly">年付 <span class="badge-save">省35%</span></button>
+                    </div>
+                    <div id="planCardsRow" class="row g-4 plan-cards-row"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <a class="btn btn-outline-primary" href="./index.html">
+                    <i class="bi bi-arrow-left me-1"></i>返回首页
+                </a>
+                <button id="logoutBtn" class="btn btn-outline-danger" type="button">
+                    <i class="bi bi-box-arrow-right me-1"></i><span>退出登录</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 加群咨询弹窗 -->
+<div id="paymentModalBackdrop" class="payment-modal-backdrop d-none">
+    <div class="payment-modal-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="h5 mb-0">加群咨询升级</h3>
+            <button type="button" id="paymentModalClose" class="btn btn-sm btn-outline-secondary rounded-circle p-2" aria-label="关闭">&times;</button>
+        </div>
+        <div id="paymentModalPlan" class="small text-secondary mb-3"></div>
+        <div class="mb-3 small text-secondary">
+            扫码添加客服微信或加入学习群，咨询版本与付费事宜。
+        </div>
+        <div class="text-center">
+            <img id="groupQrImage" src="" alt="加群二维码" style="max-width: 220px; height: auto; display: none; border-radius: 8px;">
+            <div id="paymentModalTip" class="small text-secondary mt-3 d-none"></div>
+        </div>
+    </div>
+</div>
+
+<script src="./api-client.js" defer></script>
+<script src="./bind-phone-modal.js" defer></script>
+<script src="./plan-config.js" defer></script>
+<script src="./center.js" defer></script>
+</body>
+</html>

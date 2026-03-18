@@ -1,0 +1,1361 @@
+/* ================================
+   年轻化整体视觉与交互增强（覆盖上方旧样式）
+   ================================ */
+
+:root {
+    --bg: #f4f6fb;
+    --bg-soft: #eef2ff;
+    --card: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --primary: #3b82f6;
+    --primary-soft: #dbeafe;
+    --primary-strong: #1d4ed8;
+    --accent: #a855f7;
+    --danger: #ef4444;
+    --border: #e5e7eb;
+    --radius-lg: 18px;
+    --radius-md: 14px;
+    --shadow-soft: 0 16px 40px rgba(15, 23, 42, 0.12);
+    --shadow-card: 0 12px 28px rgba(15, 23, 42, 0.1);
+    --transition-fast: .16s ease-out;
+}
+
+body {
+    margin: 0;
+    font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: var(--text);
+    /* 简洁浅色背景，去掉大面积渐变 */
+    background-color: var(--bg);
+}
+
+/* 顶部 hero 区域：统一首页/题库/考试的视觉（简洁配色版） */
+.hero {
+    border-radius: var(--radius-lg);
+    /* 改为单一方向的柔和渐变，降低花哨感 */
+    background: linear-gradient(130deg, #0f172a, #1e3a8a);
+    color: #fff;
+    padding: 22px 22px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-soft);
+    position: relative;
+    overflow: hidden;
+}
+
+/* 去掉额外高亮光晕 */
+.hero::before {
+    content: none;
+}
+
+.hero h1 { margin: 0 0 6px; }
+.hero p { margin: 0; color: #c7d2fe; }
+
+.hero .btn {
+    backdrop-filter: blur(18px);
+}
+
+/* 首页用户信息固定在右上角 */
+.hero .user-area-top-right {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+/* 首页入口卡片 hover 更灵动 */
+.entry-card {
+    border-radius: var(--radius-md);
+    background: var(--card);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.entry-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 55%);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.entry-card:hover {
+    transform: translateY(-4px) translateZ(0);
+    border-color: rgba(59, 130, 246, 0.45);
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.18);
+}
+
+.entry-card:hover::after {
+    opacity: 1;
+}
+
+/* 列表、题目卡片：更柔和的卡片感 */
+.bank-row,
+.question-row {
+    border-radius: .9rem;
+    border-color: #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+/* 卡片与按钮交互：轻微浮起 */
+.card {
+    border-radius: var(--radius-md);
+    border-color: rgba(226, 232, 240, 0.9);
+    box-shadow: var(--shadow-card);
+}
+
+button,
+.btn,
+.link-btn {
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    padding: 9px 16px;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+button:hover,
+.btn:hover,
+.link-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 32px rgba(37, 99, 235, 0.35);
+}
+
+/* 统一 Bootstrap 主要按钮色系 */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-strong), var(--accent));
+    border-color: transparent;
+    box-shadow: 0 14px 26px rgba(59, 130, 246, 0.36);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+}
+
+.btn-outline-primary {
+    border-color: rgba(59, 130, 246, 0.8);
+    color: var(--primary-strong);
+    background: rgba(239, 246, 255, 0.8);
+}
+
+.btn-outline-primary:hover {
+    background: rgba(219, 234, 254, 1);
+    color: #1d4ed8;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+    border-color: transparent;
+}
+
+.btn-danger,
+.btn-outline-danger {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-color: rgba(248, 113, 113, 0.7);
+}
+
+.btn-light {
+    background: #e0f2fe;
+    color: #0f172a;
+}
+
+/* 左侧模块导航：更像应用菜单 */
+.module-menu-btn {
+    text-align: left;
+    border-radius: 999px;
+    border-width: 1.5px;
+    background: #f8fafc;
+}
+
+.module-menu-btn:hover {
+    background: #eff6ff;
+}
+
+.module-menu-btn.active-menu {
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.4);
+}
+
+body {
+    background: radial-gradient(circle at top right, #eef2ff, #f8fafc 40%, #f1f5f9);
+}
+
+.hero {
+    background: linear-gradient(130deg, #0f172a, #1e3a8a);
+    color: #fff;
+}
+
+.entry-card {
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.entry-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 1rem 2rem rgba(15, 23, 42, .12) !important;
+}
+
+.question-badge {
+    font-size: .72rem;
+    padding: .25rem .5rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 4.5em;
+}
+.question-row .question-row-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.question-badge.choice { background: #dbeafe; color: #1e40af; }
+.question-badge.short { background: #ffedd5; color: #9a3412; }
+.question-badge.tf { background: #ede9fe; color: #5b21b6; }
+
+/* 筛选多选：整块可点击展开，选择栏与下拉箭头样式统一 */
+.filter-select-dropdown { display: inline-flex; }
+.filter-select-trigger {
+    display: flex;
+    align-items: center;
+    min-height: 38px;
+    min-width: 140px;
+    border: 1px solid var(--border, #dee2e6);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.filter-select-trigger:hover { border-color: #adb5bd; }
+.filter-select-dropdown.show .filter-select-trigger {
+    border-color: var(--primary, #0d6efd);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+}
+.filter-select-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 4px 8px 4px 10px;
+    border: none;
+    background: transparent;
+    flex: 1;
+    min-width: 0;
+}
+.filter-select-dropdown .filter-select-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 32px;
+    min-height: 36px;
+    padding: 0;
+    border: none;
+    border-left: 1px solid var(--border, #dee2e6);
+    background: transparent;
+    color: var(--muted, #6c757d);
+    font-size: 0.9rem;
+}
+.filter-select-trigger:hover .filter-select-toggle { color: var(--text, #212529); }
+.filter-select-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+.filter-select-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px 2px 8px;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    background: var(--primary-soft, #e7f1ff);
+    color: var(--primary-strong, #0d6efd);
+    white-space: nowrap;
+}
+.filter-select-tag .filter-select-tag-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    opacity: 0.75;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+}
+.filter-select-tag .filter-select-tag-close:hover { opacity: 1; background: rgba(0,0,0,.08); }
+.filter-select-more {
+    font-size: 0.8rem;
+    color: var(--muted, #6c757d);
+    padding: 2px 6px;
+    white-space: nowrap;
+}
+.filter-select-toggle {
+    flex-shrink: 0;
+    padding: 4px 6px;
+    color: var(--muted, #6c757d);
+    border: none;
+    background: transparent;
+}
+.filter-select-toggle:hover { color: var(--text, #212529); }
+
+/* 筛选下拉选项：不展示方框，整行点击即选中 */
+.filter-option-row {
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    margin: 0 -8px;
+    display: block;
+}
+.filter-option-row:hover { background: rgba(0, 0, 0, 0.06); }
+/* 已选中的选项：高亮样式 */
+.filter-option-row:has(input:checked) {
+    background: var(--primary-soft, #e7f1ff);
+    color: var(--primary-strong, #0d6efd);
+}
+.filter-option-row:has(input:checked):hover {
+    background: rgba(13, 110, 253, 0.18);
+}
+.filter-option-cb-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+:root {
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --text: #020617;
+    --muted: #6b7280;
+    --primary: #2563eb;
+    --primary-soft: rgba(37, 99, 235, 0.08);
+    --border: #e5e7eb;
+    --radius-lg: 18px;
+    --radius-md: 12px;
+}
+
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text);
+    background:
+        radial-gradient(circle at top right, #e0f2fe, transparent 55%),
+        radial-gradient(circle at bottom left, #ede9fe, transparent 55%),
+        #f8fafc;
+}
+.app { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+.hero {
+    border-radius: var(--radius-lg);
+    background: radial-gradient(circle at top left, #38bdf8, transparent 55%), linear-gradient(120deg, #0f172a, #1d4ed8);
+    color: #fff;
+    padding: 20px 22px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.35);
+    position: relative;
+    overflow: hidden;
+}
+.hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.12), transparent 55%);
+    opacity: 0.9;
+    pointer-events: none;
+}
+.hero h1 { margin: 0 0 6px; letter-spacing: 0.02em; }
+.hero p { margin: 0; color: #dbeafe; font-size: 0.9rem; }
+
+.entry-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+.entry-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: var(--card);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(12px);
+}
+
+.layout-2col {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 14px;
+}
+.stack { display: grid; gap: 14px; }
+
+.card {
+    background: var(--card);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+    transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+.card:hover {
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+    transform: translateY(-2px);
+    border-color: rgba(37, 99, 235, 0.3);
+}
+.card h2 { margin: 0 0 10px; font-size: 18px; }
+
+input, textarea, select {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: rgba(37, 99, 235, 0.7);
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
+    background-color: #f9fafb;
+}
+textarea { min-height: 80px; }
+
+button, .link-btn {
+    border: none;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    padding: 9px 16px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-weight: 500;
+    font-size: 0.92rem;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, opacity 0.16s ease;
+}
+button:hover, .link-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 32px rgba(37, 99, 235, 0.45);
+}
+button:active, .link-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.35);
+}
+.link-btn { background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.35); box-shadow: none; }
+
+.inline-form { display: flex; gap: 8px; }
+.inline-form input { margin-bottom: 0; }
+
+.panel-head { display: flex; justify-content: space-between; align-items: center; }
+.muted { color: var(--muted); font-size: 13px; }
+.hint { color: #047857; font-size: 13px; margin-top: 8px; }
+
+.bank-cards, .question-list { display: grid; gap: 10px; }
+.bank-item, .question-item {
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.92);
+    transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+.bank-item:hover, .question-item:hover {
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+    transform: translateY(-1px);
+    border-color: rgba(37, 99, 235, 0.35);
+    background: #ffffff;
+}
+.bank-item-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.bank-actions { display: flex; gap: 6px; }
+.btn-light { background: #e0e7ff; color: #1e3a8a; }
+.btn-danger { background: #ffe4e6; color: #be123c; }
+
+.types { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.types label { font-size: 14px; }
+
+.q-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    color: #fff;
+    font-size: 12px;
+}
+.q-tag.choice { background: #2563eb; }
+.q-tag.short { background: #d97706; }
+.q-tag.tf { background: #7c3aed; }
+
+@media (max-width: 900px) {
+    .entry-grid, .layout-2col { grid-template-columns: 1fr; }
+    .inline-form { flex-direction: column; }
+}
+
+.doc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+}
+
+.doc-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.doc-cover {
+    height: 88px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+}
+
+.doc-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.doc-cover-fallback {
+    font-size: 12px;
+    color: #64748b;
+    letter-spacing: 0.08em;
+}
+
+.doc-name {
+    padding: 8px 10px 2px;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.doc-meta {
+    padding: 0 10px 8px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.result-summary {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+.result-total-score {
+    font-size: 28px;
+    font-weight: 800;
+    color: #1d4ed8;
+    line-height: 1.1;
+}
+
+.score-pill {
+    background: #0f172a;
+    color: #fff;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-weight: 700;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.result-correct {
+    border-color: #86efac;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.result-wrong {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.result-neutral {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.question-row {
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid #e2e8f0;
+    transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+.question-row:hover {
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+    transform: translateY(-1px);
+    border-color: rgba(37, 99, 235, 0.3);
+    background: #ffffff;
+}
+
+/* 考试答题：不展示选项前选框，整行点击即可选择 */
+.exam-question-answer .exam-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.exam-question-answer .exam-option-item {
+    display: block;
+    margin: 0;
+    padding: 12px 14px;
+    cursor: pointer;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 10px;
+    background: #fff;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.exam-question-answer .exam-option-item:hover {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: #f8fafc;
+}
+.exam-question-answer .exam-option-item:has(input:checked) {
+    border-color: var(--primary, #3b82f6);
+    background: var(--primary-soft, #dbeafe);
+    box-shadow: 0 0 0 1px var(--primary, #3b82f6);
+}
+.exam-question-answer .exam-option-item .form-check-input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    margin: 0;
+    pointer-events: none;
+}
+.exam-question-answer .exam-option-item .exam-option-text {
+    display: block;
+}
+
+.exam-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 14px;
+}
+
+.exam-sidebar {
+    align-self: start;
+    position: sticky;
+    top: 12px;
+}
+
+.module-menu-btn {
+    text-align: left;
+    border-radius: 999px;
+    padding-inline: 14px;
+    background-color: #f8fafc;
+    border-color: rgba(148, 163, 184, 0.7);
+    color: #0f172a;
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.module-menu-btn:hover {
+    background-color: #eef2ff;
+    border-color: rgba(79, 70, 229, 0.8);
+    transform: translateX(2px);
+}
+
+.module-menu-btn.active-menu {
+    background: #1d4ed8;
+    color: #fff;
+    border-color: #1d4ed8;
+    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.45);
+}
+
+.module-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.module-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: #fff;
+    color: #334155;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.module-tag.active {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e40af;
+}
+
+.module-tag-title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.module-tag-close {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+}
+
+@media (max-width: 992px) {
+    .exam-layout {
+        grid-template-columns: 1fr;
+    }
+    .exam-sidebar {
+        position: static;
+    }
+}
+
+.upload-task-fab {
+    position: fixed;
+    right: 20px;
+    bottom: 24px;
+    width: 64px;
+    height: 64px;
+    border-radius: 999px;
+    border: 0;
+    background: #2563eb;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.35);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1050;
+}
+
+.upload-task-fab-count {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 11px;
+    line-height: 22px;
+    text-align: center;
+    padding: 0 6px;
+}
+
+.upload-task-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1060;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.upload-task-modal-card {
+    width: min(680px, 100%);
+    max-height: min(70vh, 640px);
+    overflow: auto;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 20px 50px rgba(2, 6, 23, 0.24);
+    padding: 14px;
+}
+
+.upload-task-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    padding: 10px;
+}
+
+.global-loading-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(15, 23, 42, 0.38);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.global-loading-card {
+    min-width: 180px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 18px 40px rgba(2, 6, 23, 0.2);
+    padding: 14px 16px;
+    text-align: center;
+}
+
+.auth-shell {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15);
+    background: #fff;
+}
+
+.auth-brand-panel {
+    background: linear-gradient(145deg, #0f172a, #1e3a8a);
+    color: #fff;
+    padding: 36px 30px;
+    min-height: 620px;
+    display: flex;
+    align-items: center;
+}
+
+.auth-brand-title {
+    font-size: 34px;
+    font-weight: 800;
+    margin-bottom: 12px;
+}
+
+.auth-brand-subtitle {
+    color: #c7d2fe;
+    margin-bottom: 26px;
+    font-size: 15px;
+    line-height: 1.65;
+}
+
+.auth-brand-points {
+    display: grid;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.auth-brand-points > div {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.auth-card {
+    padding: 30px 26px;
+    background: #fff;
+}
+
+.auth-card-header h2 {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.auth-tabs {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    padding: 6px;
+}
+
+.auth-tab-btn {
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #475569;
+    padding: 9px 10px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.auth-tab-btn.active {
+    background: #fff;
+    color: #1e40af;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+}
+
+.auth-wechat-box {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 10px;
+    min-height: 52px;
+}
+
+.auth-modal-card {
+    width: min(460px, 100%);
+}
+
+@media (max-width: 992px) {
+    .auth-shell {
+        grid-template-columns: 1fr;
+    }
+    .auth-brand-panel {
+        min-height: auto;
+        padding: 24px 20px;
+    }
+    .auth-card {
+        padding: 20px 16px;
+    }
+}
+
+/* ========== 用量进度条（绿/黄/红） ========== */
+.usage-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+.usage-progress__bar {
+    height: 8px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+}
+.usage-progress__fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.2s ease, background-color 0.2s ease;
+}
+.usage-progress__fill--green {
+    background: #22c55e;
+}
+.usage-progress__fill--yellow {
+    background: #eab308;
+}
+.usage-progress__fill--red {
+    background: #ef4444;
+}
+.usage-progress__text {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.usage-progress-wrap {
+    display: inline-block;
+}
+
+/* ========== 个人中心 - 版本与定价 ========== */
+.plan-section-card .card-body {
+    padding: 1.5rem 1.75rem;
+}
+
+.plan-period-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    background: #f1f5f9;
+    border-radius: 999px;
+    width: fit-content;
+}
+
+.plan-period-tab {
+    padding: 0.5rem 1.25rem;
+    border: none;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #64748b;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.plan-period-tab:hover {
+    color: #334155;
+    background: #e2e8f0;
+}
+
+.plan-period-tab.active {
+    color: #fff;
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.plan-period-tab .badge-save {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.25);
+    margin-left: 0.25rem;
+}
+
+.plan-cards-row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.plan-card {
+    flex: 1;
+    min-width: 200px;
+    max-width: 100%;
+    border-radius: 16px;
+    border: 2px solid #e2e8f0;
+    background: #fff;
+    padding: 1.5rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.plan-card:hover {
+    border-color: #c7d2fe;
+    box-shadow: 0 12px 28px rgba(59, 130, 246, 0.12);
+}
+
+.plan-card--current {
+    border-color: #3b82f6;
+    background: linear-gradient(180deg, #eff6ff 0%, #fff 40%);
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+}
+
+.plan-card--current::before {
+    content: "当前使用";
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #2563eb;
+    background: #dbeafe;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+}
+
+.plan-card__name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.5rem;
+}
+
+.plan-card__desc {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+.plan-card__features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.25rem;
+    font-size: 0.85rem;
+    color: #475569;
+}
+
+.plan-card__features li {
+    padding: 0.35rem 0;
+    padding-left: 1.25rem;
+    position: relative;
+}
+
+.plan-card__features li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.6rem;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #3b82f6;
+}
+
+.plan-card__price {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #1e40af;
+    margin-top: auto;
+    margin-bottom: 0.5rem;
+}
+
+.plan-card__price-note {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-bottom: 1rem;
+}
+
+.plan-card__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
+.plan-card__btn-free {
+    padding: 0.6rem 1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    background: #f1f5f9;
+    color: #64748b;
+    border: none;
+    cursor: default;
+}
+
+.plan-card__pay-btns {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.plan-card__pay-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 0.6rem 0.75rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.plan-card__pay-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+.plan-card__pay-btn--wechat {
+    background: #07c160;
+    color: #fff;
+}
+
+.plan-card__pay-btn--wechat:hover {
+    background: #06ad56;
+    color: #fff;
+}
+
+.plan-card__pay-btn--alipay {
+    background: #1677ff;
+    color: #fff;
+}
+
+.plan-card__pay-btn--alipay:hover {
+    background: #4096ff;
+    color: #fff;
+}
+
+/* 支付弹窗 */
+.payment-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: paymentFadeIn 0.2s ease;
+}
+
+@keyframes paymentFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.payment-modal-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 1.5rem 1.75rem;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
+    animation: paymentSlideIn 0.25s ease;
+}
+
+@keyframes paymentSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.payment-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.payment-method-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
+    background: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+}
+
+.payment-method-btn:hover {
+    border-color: #c7d2fe;
+    background: #f8fafc;
+    transform: translateY(-2px);
+}
+
+.payment-method-wechat:hover {
+    border-color: #07c160;
+    background: #f0fdf4;
+}
+
+.payment-method-alipay:hover {
+    border-color: #1677ff;
+    background: #eff6ff;
+}
+
+.payment-method-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.payment-method-wechat .payment-method-icon {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.payment-method-alipay .payment-method-icon {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+@media (min-width: 768px) {
+    .plan-cards-row .col-md-4 {
+        flex: 0 0 auto;
+        width: 33.333%;
+    }
+    .plan-card {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 767px) {
+    .plan-cards-row {
+        flex-direction: column;
+    }
+    .plan-card {
+        min-width: 100%;
+    }
+}
+
+/* 强制绑定手机号全屏层 */
+.phone-bind-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(15, 23, 42, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(4px);
+}
+.phone-bind-backdrop.d-none {
+    display: none !important;
+}
+.phone-bind-card {
+    position: relative;
+    max-width: 420px;
+    width: 100%;
+    border-radius: var(--radius-lg, 18px);
+}
+
+.phone-bind-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #6b7280;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.phone-bind-close-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #111827;
+}
+
+.phone-bind-close-btn:focus-visible {
+    outline: 2px solid var(--primary, #3b82f6);
+    outline-offset: 2px;
+}
+body.phone-bind-open {
+    overflow: hidden;
+}
+
+.app-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(2px);
+}
+
+.app-modal-card {
+    width: min(520px, 100%);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    padding: 18px 18px 16px;
+}
