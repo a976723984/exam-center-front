@@ -285,6 +285,14 @@ body {
     color: var(--primary-strong, #0d6efd);
     white-space: nowrap;
 }
+
+.filter-select-tag-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .filter-select-tag .filter-select-tag-close {
     display: inline-flex;
     align-items: center;
@@ -343,6 +351,64 @@ body {
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
     border: 0;
+}
+
+/* ================================
+   组卷与考试页：筛选区（两列/一行两项）
+   - label 在左
+   - 下拉输入在右
+   - 下拉触发宽度固定，不随已选项扩张
+   ================================ */
+.question-filters-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 16px;
+}
+
+.question-filter-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+}
+
+.question-filter-label {
+    flex: 0 0 auto;
+    width: 56px;
+    white-space: nowrap;
+    color: var(--muted, #6c757d);
+    font-size: 0.875rem;
+}
+
+.question-filter-input {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+}
+
+.question-filter-input .filter-select-trigger {
+    width: 100%;
+    min-width: 0 !important;
+}
+
+.question-filter-input .filter-select-bar {
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* 防止已选 tags 因换行导致触发宽/高扩张 */
+.question-filter-input .filter-select-tags {
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+
+.question-filter-input .filter-select-tag {
+    flex-shrink: 0;
+}
+
+.question-filter-input .filter-select-more {
+    flex-shrink: 0;
 }
 
 :root {
@@ -665,6 +731,11 @@ button:active, .link-btn:active {
     top: 12px;
 }
 
+.exam-sidebar-menu {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
 .module-menu-btn {
     text-align: left;
     border-radius: 999px;
@@ -727,12 +798,97 @@ button:active, .link-btn:active {
     cursor: pointer;
 }
 
+/* 移动端左侧抽屉：背罩 */
+.exam-sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(2px);
+    z-index: 1040;
+    transition: opacity 0.22s ease;
+}
+
+/* 移动端左侧固定按钮：打开导航与题库 */
+.exam-sidebar-toggle-btn {
+    display: none;
+    position: fixed;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1030;
+    width: 44px;
+    height: 52px;
+    padding: 0;
+    border: none;
+    border-radius: 0 14px 14px 0;
+    background: linear-gradient(145deg, #1e40af, #3730a3);
+    color: #fff;
+    font-size: 1.2rem;
+    box-shadow: 2px 0 16px rgba(30, 64, 175, 0.25);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.exam-sidebar-toggle-btn:hover {
+    transform: translateY(-50%) translateX(2px);
+    box-shadow: 4px 0 20px rgba(30, 64, 175, 0.35);
+    background: linear-gradient(145deg, #1d4ed8, #4f46e5);
+}
+.exam-sidebar-toggle-btn:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
 @media (max-width: 992px) {
     .exam-layout {
         grid-template-columns: 1fr;
     }
     .exam-sidebar {
         position: static;
+    }
+    /* 移动端：左侧全高抽屉，与屏幕同高 */
+    .exam-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: min(288px, 82vw);
+        max-width: 288px;
+        height: 100vh;
+        height: 100dvh;
+        min-height: 100vh;
+        min-height: 100dvh;
+        z-index: 1050;
+        margin: 0;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+        overflow-y: auto;
+        overflow-x: hidden;
+        border-radius: 0;
+        border: none;
+        background: #fafbfc;
+        box-shadow: none;
+    }
+    .exam-sidebar.exam-sidebar-open {
+        transform: translateX(0);
+        box-shadow: 12px 0 40px rgba(0, 0, 0, 0.12);
+    }
+    .exam-sidebar.exam-sidebar-open .exam-sidebar-inner {
+        min-height: 100%;
+    }
+    .exam-sidebar-inner {
+        padding: 1.25rem 1rem 2rem;
+        min-height: 100%;
+    }
+    .exam-sidebar .exam-sidebar-menu {
+        max-height: none;
+    }
+    .exam-sidebar-toggle-btn {
+        display: inline-flex;
+    }
+    .exam-sidebar-backdrop.exam-sidebar-backdrop-visible {
+        display: block;
     }
 }
 
@@ -1428,29 +1584,23 @@ body.phone-bind-open {
         gap: 10px;
     }
 
-    /* 模块导航在移动端改为横向滚动条，避免挤压溢出 */
-    .exam-sidebar .card-body {
-        padding: 12px !important;
-    }
-    .exam-sidebar .d-grid.gap-2 {
-        display: flex !important;
-        flex-wrap: nowrap !important;
-        gap: 8px !important;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 4px;
-    }
-    .exam-sidebar .module-menu-btn {
-        flex: 0 0 auto;
-        white-space: nowrap;
+    /* 模块导航 + 当前题库：收纳在左侧，可通过按钮弹出/隐藏（配合 JS 切换 d-none） */
+    .exam-sidebar {
+        max-width: 260px;
     }
 
-    /* 当前题库/筛选区：下拉最小宽度过大时会撑破，移动端收窄并允许换行 */
-    .filter-select-trigger {
-        min-width: 110px;
+    /* 当前题库/筛选区：筛选项在移动端一行一项单列展示 */
+    #questionFiltersRow .question-filters-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
     }
-    #questionFiltersRow .d-flex.flex-wrap.align-items-center.gap-2 {
-        align-items: stretch !important;
+
+    #questionFiltersRow .question-filter-item {
+        gap: 8px !important;
+    }
+
+    #questionFiltersRow .question-filter-input .filter-select-trigger {
+        width: 100% !important;
     }
 
     /* 题库与出题：题目列表行在移动端让题干占满，徽标换行到下一行 */

@@ -1,4 +1,5 @@
 const bankSelect = document.getElementById("bankSelect");
+const bankSelectMobile = document.getElementById("bankSelectMobile");
 const genBtn = document.getElementById("genBtn");
 const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
 const selectAllQuestions = document.getElementById("selectAllQuestions");
@@ -44,6 +45,8 @@ const examSessionMeta = document.getElementById("examSessionMeta");
 const userArea = document.getElementById("userArea");
 const userAreaText = document.getElementById("userAreaText");
 const msg = document.getElementById("msg");
+const examSidebarToggle = document.getElementById("examSidebarToggle");
+const examSidebar = document.querySelector(".exam-sidebar");
 const actionConfirmModalEl = document.getElementById("actionConfirmModal");
 const actionConfirmModalTitle = document.getElementById("actionConfirmModalTitle");
 const actionConfirmModalDesc = document.getElementById("actionConfirmModalDesc");
@@ -312,7 +315,7 @@ function renderActionConfirmDropdownTags(container) {
     const restCount = items.length - FILTER_TAG_MAX_DROPDOWN;
     tagsEl.innerHTML = visible.map((item) => `
         <span class="filter-select-tag" data-value="${escapeHtml(String(item.value))}">
-            ${escapeHtml(item.label)}
+            <span class="filter-select-tag-text">${escapeHtml(item.label)}</span>
             <button type="button" class="filter-select-tag-close" aria-label="移除">×</button>
         </span>`).join("");
     tagsEl.querySelectorAll(".filter-select-tag-close").forEach((btn) => {
@@ -757,6 +760,8 @@ function updateQuestionUsageHint() {
         html = PlanConfig.renderUsageBar(usage.total, null, "道");
     }
     el.innerHTML = html;
+    var elMobile = document.getElementById("questionUsageHintMobile");
+    if (elMobile) elMobile.innerHTML = html;
 }
 
 async function listQuestions(bankId) {
@@ -1149,7 +1154,7 @@ function renderFilterDifficultyTags() {
     const restCount = items.length - FILTER_TAG_MAX;
     tagsEl.innerHTML = visible.map((item) => `
         <span class="filter-select-tag" data-value="${item.value}">
-            ${escapeHtml(item.label)}
+            <span class="filter-select-tag-text">${escapeHtml(item.label)}</span>
             <button type="button" class="filter-select-tag-close" aria-label="移除">×</button>
         </span>`).join("");
     tagsEl.querySelectorAll(".filter-select-tag-close").forEach((btn) => {
@@ -1223,7 +1228,7 @@ function renderDialogGenTypesTags() {
     const restCount = items.length - FILTER_TAG_MAX;
     tagsEl.innerHTML = visible.map((item) => `
         <span class="filter-select-tag" data-value="${escapeHtml(item.value)}">
-            ${escapeHtml(item.label)}
+            <span class="filter-select-tag-text">${escapeHtml(item.label)}</span>
             <button type="button" class="filter-select-tag-close" aria-label="移除">×</button>
         </span>`).join("");
     tagsEl.querySelectorAll(".filter-select-tag-close").forEach((btn) => {
@@ -1263,7 +1268,7 @@ function renderFilterCategoryTags() {
     const restCount = items.length - FILTER_TAG_MAX;
     tagsEl.innerHTML = visible.map((item) => `
         <span class="filter-select-tag" data-value="${escapeHtml(item.value)}">
-            ${escapeHtml(item.label)}
+            <span class="filter-select-tag-text">${escapeHtml(item.label)}</span>
             <button type="button" class="filter-select-tag-close" aria-label="移除">×</button>
         </span>`).join("");
     tagsEl.querySelectorAll(".filter-select-tag-close").forEach((btn) => {
@@ -1306,7 +1311,7 @@ function renderFilterQuestionTypeTags() {
     const restCount = items.length - FILTER_TAG_MAX;
     tagsEl.innerHTML = visible.map((item) => `
         <span class="filter-select-tag" data-value="${escapeHtml(item.value)}">
-            ${escapeHtml(item.label)}
+            <span class="filter-select-tag-text">${escapeHtml(item.label)}</span>
             <button type="button" class="filter-select-tag-close" aria-label="移除">×</button>
         </span>`).join("");
     tagsEl.querySelectorAll(".filter-select-tag-close").forEach((btn) => {
@@ -1916,12 +1921,22 @@ async function refreshExamHistory() {
 async function initBanks() {
     const banks = await fetchBanks();
     bankSelect.innerHTML = "";
+    bankSelectMobile.innerHTML = "";
     banks.forEach((b) => {
         const opt = document.createElement("option");
         opt.value = b.id;
         opt.textContent = b.name;
         bankSelect.appendChild(opt);
+        if (bankSelectMobile) {
+            const optMobile = document.createElement("option");
+            optMobile.value = b.id;
+            optMobile.textContent = b.name;
+            bankSelectMobile.appendChild(optMobile);
+        }
     });
+    if (bankSelectMobile && bankSelect.value) {
+        bankSelectMobile.value = bankSelect.value;
+    }
 }
 
 const generateQuestionModalEl = document.getElementById("generateQuestionModal");
@@ -2337,7 +2352,11 @@ bankSelect.addEventListener("change", async () => {
         examResult.innerHTML = "";
         examSessionMeta.textContent = "尚未开始考试";
         currentExamId = null;
-        await loadQuestionFilters(bankSelect.value);
+        const bankId = bankSelect.value;
+        if (bankSelectMobile && bankSelectMobile.value !== bankId) {
+            bankSelectMobile.value = bankId;
+        }
+        await loadQuestionFilters(bankId);
         await refreshQuestions(1);
         await refreshPapers();
         await refreshExamHistory();
@@ -2345,6 +2364,42 @@ bankSelect.addEventListener("change", async () => {
         show(e.message, "danger");
     }
 });
+
+if (bankSelectMobile) {
+    bankSelectMobile.addEventListener("change", () => {
+        if (!bankSelect) return;
+        if (bankSelect.value !== bankSelectMobile.value) {
+            bankSelect.value = bankSelectMobile.value;
+            bankSelect.dispatchEvent(new Event("change"));
+        }
+        if (window.matchMedia("(max-width: 992px)").matches) closeExamSidebar();
+    });
+}
+
+function openExamSidebar() {
+    if (!examSidebar || !document.getElementById("examSidebarBackdrop")) return;
+    examSidebar.classList.add("exam-sidebar-open");
+    document.getElementById("examSidebarBackdrop").classList.add("exam-sidebar-backdrop-visible");
+    document.getElementById("examSidebarBackdrop").setAttribute("aria-hidden", "false");
+}
+function closeExamSidebar() {
+    if (!examSidebar || !document.getElementById("examSidebarBackdrop")) return;
+    examSidebar.classList.remove("exam-sidebar-open");
+    document.getElementById("examSidebarBackdrop").classList.remove("exam-sidebar-backdrop-visible");
+    document.getElementById("examSidebarBackdrop").setAttribute("aria-hidden", "true");
+}
+function toggleExamSidebar() {
+    if (!examSidebar) return;
+    if (examSidebar.classList.contains("exam-sidebar-open")) closeExamSidebar();
+    else openExamSidebar();
+}
+if (examSidebarToggle && examSidebar) {
+    examSidebarToggle.addEventListener("click", () => toggleExamSidebar());
+}
+var examSidebarBackdrop = document.getElementById("examSidebarBackdrop");
+if (examSidebarBackdrop) {
+    examSidebarBackdrop.addEventListener("click", () => closeExamSidebar());
+}
 
 const applyQuestionFilter = document.getElementById("applyQuestionFilter");
 if (applyQuestionFilter) {
@@ -2381,6 +2436,7 @@ moduleMenuBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
         const key = btn.getAttribute("data-module");
         openModule(key);
+        if (window.matchMedia("(max-width: 992px)").matches) closeExamSidebar();
     });
 });
 
