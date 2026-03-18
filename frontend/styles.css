@@ -691,6 +691,33 @@ button:active, .link-btn:active {
     background: #ffffff;
 }
 
+/* 考试记录列表行、试卷列表内容区：点击整行/内容进入详情 */
+.exam-record-row-clickable {
+    cursor: pointer;
+}
+.exam-record-row-head {
+    align-items: center;
+}
+.exam-record-row .exam-record-score {
+    font-size: 1.25rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    text-align: right;
+    align-self: center;
+}
+.exam-record-score--low {
+    color: #dc2626;
+}
+.exam-record-score--mid {
+    color: #ca8a04;
+}
+.exam-record-score--high {
+    color: #16a34a;
+}
+.paper-list-item-content {
+    cursor: pointer;
+}
+
 /* 考试答题：不展示选项前选框，整行点击即可选择 */
 .exam-question-answer .exam-options-list {
     display: flex;
@@ -840,6 +867,11 @@ button:active, .link-btn:active {
     justify-content: center;
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
+
+/* 桌面端：当侧边栏被收起后，强制显示打开按钮 */
+.exam-sidebar-toggle-visible {
+    display: inline-flex !important;
+}
 .exam-sidebar-toggle-btn:hover {
     transform: translateY(-50%) translateX(2px);
     box-shadow: 4px 0 20px rgba(30, 64, 175, 0.35);
@@ -901,6 +933,16 @@ button:active, .link-btn:active {
     }
 }
 
+/* 桌面端：从侧边栏选择模块后自动收起导航 */
+@media (min-width: 993px) {
+    .exam-layout.exam-layout-sidebar-collapsed {
+        grid-template-columns: 1fr;
+    }
+    .exam-layout.exam-layout-sidebar-collapsed .exam-sidebar {
+        display: none;
+    }
+}
+
 .upload-task-fab {
     position: fixed;
     right: 20px;
@@ -934,6 +976,40 @@ button:active, .link-btn:active {
     line-height: 22px;
     text-align: center;
     padding: 0 6px;
+}
+
+/* 题库管理页：右下角可拖动「新增题库」浮动按钮（仅 + 号） */
+.add-bank-fab {
+    position: fixed;
+    right: 20px;
+    bottom: 24px;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border-radius: 999px;
+    border: 0;
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.35);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1040;
+    user-select: none;
+    touch-action: none;
+}
+.add-bank-fab:hover {
+    background: #1d4ed8;
+    color: #fff;
+}
+.add-bank-fab:active {
+    transform: scale(0.98);
+}
+.add-bank-fab .add-bank-fab-icon {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
 }
 
 .upload-task-backdrop {
@@ -1166,10 +1242,15 @@ button:active, .link-btn:active {
 
 .plan-period-tab .badge-save {
     font-size: 0.7rem;
-    padding: 0.15rem 0.4rem;
+    padding: 0.1rem 0.35rem;
     border-radius: 999px;
     background: rgba(255,255,255,0.25);
-    margin-left: 0.25rem;
+    margin-left: 0.15rem;
+    color: #dc2626;
+    font-weight: 600;
+}
+.plan-period-tab.active .badge-save {
+    color: #fecaca;
 }
 
 .plan-cards-row {

@@ -47,6 +47,7 @@ const userAreaText = document.getElementById("userAreaText");
 const msg = document.getElementById("msg");
 const examSidebarToggle = document.getElementById("examSidebarToggle");
 const examSidebar = document.querySelector(".exam-sidebar");
+const examLayout = document.querySelector(".exam-layout");
 const actionConfirmModalEl = document.getElementById("actionConfirmModal");
 const actionConfirmModalTitle = document.getElementById("actionConfirmModalTitle");
 const actionConfirmModalDesc = document.getElementById("actionConfirmModalDesc");
@@ -525,8 +526,47 @@ function activateModule(key) {
     refreshModulePanels();
 }
 
+function closeExamSidebarNow() {
+    const sidebar = document.getElementById("examSidebar");
+    const backdrop = document.getElementById("examSidebarBackdrop");
+    if (sidebar) sidebar.classList.remove("exam-sidebar-open");
+    if (backdrop) {
+        backdrop.classList.remove("exam-sidebar-backdrop-visible");
+        backdrop.setAttribute("aria-hidden", "true");
+    }
+}
+
+function isDesktopSidebarCollapsed() {
+    return !!examLayout?.classList.contains("exam-layout-sidebar-collapsed");
+}
+
+function setDesktopSidebarCollapsed(collapsed) {
+    if (!examLayout) return;
+
+    if (window.matchMedia("(min-width: 993px)").matches) {
+        examLayout.classList.toggle("exam-layout-sidebar-collapsed", collapsed);
+    } else {
+        // 进入移动端时，强制移除桌面收起状态，避免影响抽屉布局
+        examLayout.classList.remove("exam-layout-sidebar-collapsed");
+    }
+
+    if (examSidebarToggle) {
+        if (collapsed) {
+            examSidebarToggle.classList.remove("d-md-none");
+            examSidebarToggle.classList.add("exam-sidebar-toggle-visible");
+        } else {
+            examSidebarToggle.classList.add("d-md-none");
+            examSidebarToggle.classList.remove("exam-sidebar-toggle-visible");
+        }
+    }
+
+    // 桌面“收起”不依赖移动端 open class，但顺带确保抽屉状态关闭
+    if (collapsed) closeExamSidebarNow();
+}
+
 function openModule(key) {
     if (!MODULE_META[key]) return;
+    closeExamSidebarNow();
     if (!openedModules.includes(key)) {
         openedModules.push(key);
     }
@@ -1425,43 +1465,16 @@ async function refreshPapers() {
                 : `<button class="btn btn-sm btn-outline-success" data-share data-paper-id="${p.id}">分享到公共区</button>`)
             : "";
         div.innerHTML = `
-            <div>
+            <div class="paper-list-item-content flex-grow-1">
                 <div class="fw-semibold">${p.title}</div>
                 <div class="text-secondary small">模式：${p.mode}</div>
             </div>
             <div class="d-flex gap-1 align-items-center">
                 ${shareBtnHtml}
-                <button class="btn btn-sm btn-outline-primary" data-view>查看题目</button>
             </div>
         `;
-        const shareBtn = div.querySelector("[data-share]");
-        if (shareBtn) {
-            shareBtn.addEventListener("click", async () => {
-                try {
-                    await ApiClient.request(`/papers/${p.id}/share`, { method: "PUT" });
-                    show("已分享到公共区");
-                    await refreshPapers();
-                } catch (e) {
-                    show(e.message || "分享失败", "danger");
-                }
-            });
-        }
-        const statsBtn = div.querySelector("[data-stats]");
-        if (statsBtn) statsBtn.addEventListener("click", () => showPublicStatsModal(p.id));
-        const unshareBtn = div.querySelector("[data-unshare]");
-        if (unshareBtn) {
-            unshareBtn.addEventListener("click", async () => {
-                if (!window.confirm("确定取消分享？取消后他人将无法再浏览或订阅该试卷。")) return;
-                try {
-                    await ApiClient.request(`/papers/${p.id}/unshare`, { method: "PUT" });
-                    show("已取消分享");
-                    await refreshPapers();
-                } catch (e) {
-                    show(e.message || "操作失败", "danger");
-                }
-            });
-        }
-        div.querySelector("[data-view]").addEventListener("click", async () => {
+        const contentArea = div.querySelector(".paper-list-item-content");
+        const openPaperDetail = async () => {
             const detail = await paperDetail(p.id, false);
             const TYPE_ORDER = { SINGLE_CHOICE: 1, MULTIPLE_CHOICE: 2, TRUE_FALSE: 3, SHORT_ANSWER: 4 };
             const typeGroups = (detail.questions || []).slice().sort((a, b) => {
@@ -1526,7 +1539,37 @@ async function refreshPapers() {
             paperListSection.classList.add("d-none");
             paperDetailSection.classList.remove("d-none");
             openModule("papers");
-        });
+        };
+        if (contentArea) contentArea.addEventListener("click", openPaperDetail);
+        const shareBtn = div.querySelector("[data-share]");
+        if (shareBtn) {
+            shareBtn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                try {
+                    await ApiClient.request(`/papers/${p.id}/share`, { method: "PUT" });
+                    show("已分享到公共区");
+                    await refreshPapers();
+                } catch (err) {
+                    show(err.message || "分享失败", "danger");
+                }
+            });
+        }
+        const statsBtn = div.querySelector("[data-stats]");
+        if (statsBtn) statsBtn.addEventListener("click", (e) => { e.stopPropagation(); showPublicStatsModal(p.id); });
+        const unshareBtn = div.querySelector("[data-unshare]");
+        if (unshareBtn) {
+            unshareBtn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                if (!window.confirm("确定取消分享？取消后他人将无法再浏览或订阅该试卷。")) return;
+                try {
+                    await ApiClient.request(`/papers/${p.id}/unshare`, { method: "PUT" });
+                    show("已取消分享");
+                    await refreshPapers();
+                } catch (err) {
+                    show(err.message || "操作失败", "danger");
+                }
+            });
+        }
         paperList.appendChild(div);
     });
     if (!list.length) {
@@ -1882,6 +1925,23 @@ function formatDateTime(text) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
+function getRecordTotalScore(item) {
+    if (!item) return null;
+    const raw = item.paperTotalScore ?? item.totalMaxScore ?? item.fullScore ?? item.maxScore
+        ?? item.paperTotal ?? item.paper_total_score ?? item.total_max_score ?? item.total;
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isNaN(n) ? null : n;
+}
+
+function getRecordUserScore(item) {
+    if (!item) return null;
+    const raw = item.userScore ?? item.totalScore ?? item.user_score ?? item.score ?? item.user_total_score;
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isNaN(n) ? null : n;
+}
+
 async function refreshExamHistory() {
     const data = await listExamRecordsPaged(bankSelect.value, currentRecordPage, recordPageSize);
     const list = data.items || [];
@@ -1897,17 +1957,29 @@ async function refreshExamHistory() {
     }
     list.forEach((item) => {
         const row = document.createElement("div");
-        row.className = "question-row p-3 d-flex justify-content-between align-items-start gap-2";
+        row.className = "question-row p-3 exam-record-row-clickable exam-record-row";
         const st = statusLabel(item.status);
         const stClass = st === "进行中" ? "text-warning" : "text-success";
+        const userScore = getRecordUserScore(item);
+        const totalScore = getRecordTotalScore(item);
+        const scoreText = totalScore != null && userScore != null ? `${userScore}/${totalScore}` : (userScore != null ? `${userScore}/-` : "-/-");
+        const ratio = totalScore != null && totalScore > 0 && userScore != null ? userScore / totalScore : null;
+        let scoreClass = "exam-record-score";
+        if (ratio != null) {
+            if (ratio < 0.6) scoreClass += " exam-record-score--low";
+            else if (ratio < 0.8) scoreClass += " exam-record-score--mid";
+            else scoreClass += " exam-record-score--high";
+        }
         row.innerHTML = `
-            <div>
-                <div class="fw-semibold">${item.paperTitle || "未命名试卷"}</div>
-                <div class="small text-secondary">状态：<span class="${stClass} fw-semibold">${escapeHtml(st)}</span> · 分数：${item.totalScore ?? "-"} · 开始：${formatDateTime(item.startedAt)} · 结束：${formatDateTime(item.endedAt)}</div>
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-1 exam-record-row-head">
+                <div class="fw-semibold flex-grow-1">${item.paperTitle || "未命名试卷"}</div>
+                <span class="${scoreClass}">${scoreText}</span>
             </div>
-            <button class="btn btn-sm btn-outline-primary" data-view-result>查看详情</button>
+            <div class="small text-secondary">状态：<span class="${stClass} fw-semibold">${escapeHtml(st)}</span></div>
+            <div class="small text-secondary">开始：${formatDateTime(item.startedAt)}</div>
+            <div class="small text-secondary">结束：${formatDateTime(item.endedAt)}</div>
         `;
-        row.querySelector("[data-view-result]").addEventListener("click", async () => {
+        row.addEventListener("click", async () => {
             const detail = await examRecordDetail(item.examRecordId);
             renderExamRecordDetail(detail);
             recordListSection.classList.add("d-none");
@@ -2383,13 +2455,16 @@ function openExamSidebar() {
     document.getElementById("examSidebarBackdrop").setAttribute("aria-hidden", "false");
 }
 function closeExamSidebar() {
-    if (!examSidebar || !document.getElementById("examSidebarBackdrop")) return;
-    examSidebar.classList.remove("exam-sidebar-open");
-    document.getElementById("examSidebarBackdrop").classList.remove("exam-sidebar-backdrop-visible");
-    document.getElementById("examSidebarBackdrop").setAttribute("aria-hidden", "true");
+    closeExamSidebarNow();
 }
 function toggleExamSidebar() {
     if (!examSidebar) return;
+    if (window.matchMedia("(min-width: 993px)").matches) {
+        // 桌面端：只有在“收起”后才会显示该按钮
+        if (isDesktopSidebarCollapsed()) setDesktopSidebarCollapsed(false);
+        else setDesktopSidebarCollapsed(true);
+        return;
+    }
     if (examSidebar.classList.contains("exam-sidebar-open")) closeExamSidebar();
     else openExamSidebar();
 }
@@ -2432,11 +2507,19 @@ statsBankSelect?.addEventListener("change", async () => {
 statsPaperSelect?.addEventListener("change", () => loadStatsAndCharts());
 statsQueryBtn?.addEventListener("click", () => loadStatsAndCharts());
 
+document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".module-menu-btn");
+    if (!btn) return;
+    closeExamSidebarNow();
+}, true);
 moduleMenuBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
         const key = btn.getAttribute("data-module");
         openModule(key);
-        if (window.matchMedia("(max-width: 992px)").matches) closeExamSidebar();
+        closeExamSidebarNow();
+        if (window.matchMedia("(min-width: 993px)").matches) {
+            setDesktopSidebarCollapsed(true);
+        }
     });
 });
 

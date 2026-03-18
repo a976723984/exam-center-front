@@ -31,31 +31,7 @@
     </div>
 
     <div class="row g-4">
-        <section class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <h2 class="h5 mb-3">
-                        <i class="bi bi-plus-square-dotted me-2 text-primary"></i>新增题库
-                    </h2>
-            <form id="createForm">
-                <div class="mb-3">
-                    <input id="createName" class="form-control" placeholder="题库名称" required>
-                </div>
-                <div class="mb-3">
-                    <textarea id="createDesc" class="form-control" placeholder="题库描述"></textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">知识文件（可选，支持批量）</label>
-                    <input id="createFile" class="form-control" type="file" multiple accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif">
-                    <div class="form-text">可一次选择多个文件，若包含图片将自动使用第一张图作为封面。</div>
-                </div>
-                <button class="btn btn-primary w-100" type="submit">创建题库</button>
-            </form>
-                </div>
-            </div>
-        </section>
-
-        <section class="col-lg-8">
+        <section class="col-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
@@ -75,6 +51,30 @@
 
     <div id="msg" class="alert alert-success mt-3 d-none py-2 mb-0" role="alert"></div>
 </div>
+
+<div id="addBankModalBackdrop" class="upload-task-backdrop d-none" aria-hidden="true">
+    <div class="upload-task-modal-card add-bank-modal-card" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+        <h3 class="h5 mb-3"><i class="bi bi-plus-square-dotted me-2 text-primary"></i>新增题库</h3>
+        <form id="createForm">
+            <div class="mb-3">
+                <input id="createName" class="form-control" placeholder="题库名称" required>
+            </div>
+            <div class="mb-3">
+                <textarea id="createDesc" class="form-control" placeholder="题库描述"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">知识文件（可选，支持批量）</label>
+                <input id="createFile" class="form-control" type="file" multiple accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif">
+                <div class="form-text">可一次选择多个文件，若包含图片将自动使用第一张图作为封面。</div>
+            </div>
+            <button class="btn btn-primary w-100" type="submit">创建题库</button>
+        </form>
+    </div>
+</div>
+
+<button id="addBankFab" type="button" class="add-bank-fab" aria-label="新增题库" title="新增题库">
+    <i class="bi bi-plus-lg add-bank-fab-icon"></i>
+</button>
 
 <button id="uploadTaskFab" type="button" class="upload-task-fab d-none" aria-label="查看上传任务">
     上传

@@ -10,6 +10,8 @@ const uploadTaskFabCount = document.getElementById("uploadTaskFabCount");
 const uploadTaskModalBackdrop = document.getElementById("uploadTaskModalBackdrop");
 const closeUploadTaskModalBtn = document.getElementById("closeUploadTaskModalBtn");
 const uploadTaskList = document.getElementById("uploadTaskList");
+const addBankModalBackdrop = document.getElementById("addBankModalBackdrop");
+const addBankFab = document.getElementById("addBankFab");
 const userArea = document.getElementById("userArea");
 const userAreaText = document.getElementById("userAreaText");
 
@@ -723,6 +725,72 @@ uploadTaskModalBackdrop.addEventListener("click", (event) => {
     }
 });
 
+function openAddBankModal() {
+    if (addBankModalBackdrop) {
+        addBankModalBackdrop.classList.remove("d-none");
+        addBankModalBackdrop.setAttribute("aria-hidden", "false");
+    }
+}
+function closeAddBankModal() {
+    if (addBankModalBackdrop) {
+        addBankModalBackdrop.classList.add("d-none");
+        addBankModalBackdrop.setAttribute("aria-hidden", "true");
+    }
+}
+if (addBankFab) {
+    let addBankFabDragMoved = false;
+    let addBankFabStartX = 0, addBankFabStartY = 0, addBankFabStartLeft = 0, addBankFabStartTop = 0;
+    const onAddBankFabPointerMove = (e) => {
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const y = e.touches ? e.touches[0].clientY : e.clientY;
+        addBankFabDragMoved = true;
+        addBankFab.style.right = "auto";
+        addBankFab.style.bottom = "auto";
+        addBankFab.style.left = (addBankFabStartLeft + (x - addBankFabStartX)) + "px";
+        addBankFab.style.top = (addBankFabStartTop + (y - addBankFabStartY)) + "px";
+    };
+    const onAddBankFabPointerUp = () => {
+        document.removeEventListener("mousemove", onAddBankFabPointerMove);
+        document.removeEventListener("mouseup", onAddBankFabPointerUp);
+        document.removeEventListener("touchmove", onAddBankFabPointerMove, { passive: true });
+        document.removeEventListener("touchend", onAddBankFabPointerUp);
+    };
+    addBankFab.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
+        const r = addBankFab.getBoundingClientRect();
+        addBankFabDragMoved = false;
+        addBankFabStartX = e.clientX;
+        addBankFabStartY = e.clientY;
+        addBankFabStartLeft = r.left;
+        addBankFabStartTop = r.top;
+        document.addEventListener("mousemove", onAddBankFabPointerMove);
+        document.addEventListener("mouseup", onAddBankFabPointerUp);
+    });
+    addBankFab.addEventListener("touchstart", (e) => {
+        if (!e.touches.length) return;
+        const r = addBankFab.getBoundingClientRect();
+        addBankFabDragMoved = false;
+        addBankFabStartX = e.touches[0].clientX;
+        addBankFabStartY = e.touches[0].clientY;
+        addBankFabStartLeft = r.left;
+        addBankFabStartTop = r.top;
+        document.addEventListener("touchmove", onAddBankFabPointerMove, { passive: true });
+        document.addEventListener("touchend", onAddBankFabPointerUp);
+    });
+    addBankFab.addEventListener("click", (e) => {
+        if (addBankFabDragMoved) {
+            addBankFabDragMoved = false;
+            return;
+        }
+        openAddBankModal();
+    });
+}
+if (addBankModalBackdrop) {
+    addBankModalBackdrop.addEventListener("click", (event) => {
+        if (event.target === addBankModalBackdrop) closeAddBankModal();
+    });
+}
+
 createForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const submitBtn = createForm.querySelector("button[type='submit']");
@@ -748,6 +816,7 @@ createForm.addEventListener("submit", async (e) => {
             createName.value = "";
             createDesc.value = "";
             createFile.value = "";
+            closeAddBankModal();
             await refresh();
             show(files.length ? "题库创建成功，文件已加入上传任务" : "题库创建成功");
         } catch (err) {
