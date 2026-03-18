@@ -1359,3 +1359,64 @@ body.phone-bind-open {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
     padding: 18px 18px 16px;
 }
+
+/* ================================
+   移动端适配（<=576px）
+   ================================ */
+@media (max-width: 576px) {
+    /* 顶部栏（hero）缩小占位 */
+    .hero {
+        padding: 12px 12px;
+        margin-bottom: 12px;
+        border-radius: 16px;
+        align-items: flex-start;
+    }
+
+    .hero h1 {
+        margin-bottom: 4px;
+    }
+
+    .hero .h3 {
+        font-size: 1.05rem;
+    }
+
+    .hero .display-6 {
+        font-size: 1.35rem;
+        line-height: 1.2;
+    }
+
+    .hero p {
+        font-size: 0.85rem;
+    }
+
+    /* 顶部栏按钮：更紧凑 + 允许换行 */
+    .hero .btn,
+    .hero button.btn {
+        padding: 7px 12px;
+        font-size: 13px;
+        border-radius: 999px;
+    }
+
+    .hero .d-flex.gap-2 {
+        gap: 8px !important;
+    }
+
+    /* 页面整体上下间距缩小（覆盖 .container.py-4） */
+    .container.py-4 {
+        padding-top: 12px !important;
+        padding-bottom: 12px !important;
+    }
+
+    /* 通用按钮：移动端更紧凑，避免“按钮太高” */
+    button,
+    .btn,
+    .link-btn {
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+
+    /* 列表卡片内部 padding 适当缩小 */
+    .card-body.p-4 {
+        padding: 1rem !important;
+    }
+}
