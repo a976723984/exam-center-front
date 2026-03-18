@@ -1419,4 +1419,51 @@ body.phone-bind-open {
     .card-body.p-4 {
         padding: 1rem !important;
     }
+
+    /* ================================
+       组卷与考试页：移动端不溢出
+       ================================ */
+    .exam-layout {
+        grid-template-columns: 1fr !important;
+        gap: 10px;
+    }
+
+    /* 模块导航在移动端改为横向滚动条，避免挤压溢出 */
+    .exam-sidebar .card-body {
+        padding: 12px !important;
+    }
+    .exam-sidebar .d-grid.gap-2 {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+    }
+    .exam-sidebar .module-menu-btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    /* 当前题库/筛选区：下拉最小宽度过大时会撑破，移动端收窄并允许换行 */
+    .filter-select-trigger {
+        min-width: 110px;
+    }
+    #questionFiltersRow .d-flex.flex-wrap.align-items-center.gap-2 {
+        align-items: stretch !important;
+    }
+
+    /* 题库与出题：题目列表行在移动端让题干占满，徽标换行到下一行 */
+    .question-row > .d-flex.justify-content-between {
+        flex-wrap: wrap;
+    }
+    .question-row > .d-flex.justify-content-between > .question-row-content {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+    .question-row > .d-flex.justify-content-between > .d-flex.flex-shrink-0 {
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
 }
