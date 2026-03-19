@@ -71,6 +71,13 @@ window.addEventListener("storage", (event) => {
     void loadActiveGenTasksFromServer().catch(() => loadPersistedGenTasks());
 });
 
+function isSidebarDrawerMode() {
+    const sidebar = document.getElementById("examSidebar");
+    if (!sidebar) return false;
+    // 用真实布局状态判断（fixed = 移动端抽屉），避免浏览器缩放/系统缩放导致断点误判
+    return window.getComputedStyle(sidebar).position === "fixed";
+}
+
 function saveGenTasksToStorage() {
     const running = Array.from(genTaskMap.values())
         .filter((t) => t.taskId && (t.status === "PENDING" || t.status === "RUNNING"))
@@ -529,7 +536,18 @@ function activateModule(key) {
 function closeExamSidebarNow() {
     const sidebar = document.getElementById("examSidebar");
     const backdrop = document.getElementById("examSidebarBackdrop");
-    if (sidebar) sidebar.classList.remove("exam-sidebar-open");
+    console.log("[sidebar] closeExamSidebarNow", {
+        hasSidebar: !!sidebar,
+        hasBackdrop: !!backdrop,
+        wasOpen: !!sidebar?.classList?.contains("exam-sidebar-open"),
+    });
+    if (sidebar) {
+        sidebar.classList.remove("exam-sidebar-open");
+        // 抽屉模式下做强制收回：即使 CSS 被覆盖，也确保可见状态关闭
+        if (isSidebarDrawerMode()) {
+            sidebar.style.transform = "translateX(-100%)";
+        }
+    }
     if (backdrop) {
         backdrop.classList.remove("exam-sidebar-backdrop-visible");
         backdrop.setAttribute("aria-hidden", "true");
@@ -541,13 +559,21 @@ function isDesktopSidebarCollapsed() {
 }
 
 function setDesktopSidebarCollapsed(collapsed) {
-    if (!examLayout) return;
+    if (!examLayout) {
+        console.log("[sidebar] setDesktopSidebarCollapsed skipped: examLayout is null", { collapsed });
+        return;
+    }
 
-    if (window.matchMedia("(min-width: 993px)").matches) {
+    if (!isSidebarDrawerMode()) {
         examLayout.classList.toggle("exam-layout-sidebar-collapsed", collapsed);
+        console.log("[sidebar] setDesktopSidebarCollapsed", {
+            collapsed,
+            applied: examLayout.classList.contains("exam-layout-sidebar-collapsed"),
+        });
     } else {
         // 进入移动端时，强制移除桌面收起状态，避免影响抽屉布局
         examLayout.classList.remove("exam-layout-sidebar-collapsed");
+        console.log("[sidebar] setDesktopSidebarCollapsed ignored on mobile breakpoint", { collapsed });
     }
 
     if (examSidebarToggle) {
@@ -566,7 +592,20 @@ function setDesktopSidebarCollapsed(collapsed) {
 
 function openModule(key) {
     if (!MODULE_META[key]) return;
+    const drawerMode = isSidebarDrawerMode();
+    console.log("[sidebar] openModule", {
+        key,
+        drawerMode,
+        examLayoutFound: !!examLayout,
+        examSidebarFound: !!document.getElementById("examSidebar"),
+    });
     closeExamSidebarNow();
+    // 统一“打开模块后自动收起侧边栏”的行为：
+    // - 移动端：关闭抽屉（由 closeExamSidebarNow/queueMicrotask 兜底）
+    // - 桌面端：隐藏侧边栏并显示左侧打开按钮
+    if (!drawerMode) {
+        setDesktopSidebarCollapsed(true);
+    }
     if (!openedModules.includes(key)) {
         openedModules.push(key);
     }
@@ -581,6 +620,8 @@ function openModule(key) {
         clearExamDraftTimer();
         clearExamSessionTimer();
     }
+    // 移动端抽屉：避免某些情况下与点击/重绘时序叠加导致未收起
+    queueMicrotask(() => closeExamSidebarNow());
 }
 
 function closeModule(key) {
@@ -1925,21 +1966,64 @@ function formatDateTime(text) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
+function firstFiniteNumber(...vals) {
+    for (const v of vals) {
+        if (v == null || v === "") continue;
+        const n = Number(v);
+        if (Number.isFinite(n)) return n;
+    }
+    return null;
+}
+
+function parseRecordScoreSlash(item) {
+    if (!item) return null;
+    const candidates = [item.scoreText, item.scoreDisplay, item.scoreLabel, item.scoreStr];
+    for (const c of candidates) {
+        if (typeof c !== "string") continue;
+        const m = String(c).trim().match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+        if (!m) continue;
+        const u = Number(m[1]);
+        const t = Number(m[2]);
+        if (Number.isFinite(u) && Number.isFinite(t)) return { userScore: u, totalScore: t };
+    }
+    return null;
+}
+
 function getRecordTotalScore(item) {
     if (!item) return null;
-    const raw = item.paperTotalScore ?? item.totalMaxScore ?? item.fullScore ?? item.maxScore
-        ?? item.paperTotal ?? item.paper_total_score ?? item.total_max_score ?? item.total;
-    if (raw == null || raw === "") return null;
-    const n = Number(raw);
-    return Number.isNaN(n) ? null : n;
+    const paper = item.paper || item.paperInfo || item.paperVo || {};
+    return firstFiniteNumber(
+        item.paperTotalScore,
+        item.totalMaxScore,
+        item.fullScore,
+        item.maxScore,
+        item.paperTotal,
+        item.paperScore,
+        item.paper_total_score,
+        item.total_max_score,
+        paper.paperTotalScore,
+        paper.totalMaxScore,
+        paper.totalScore,
+        paper.fullScore,
+        paper.maxScore,
+    );
 }
 
 function getRecordUserScore(item) {
     if (!item) return null;
-    const raw = item.userScore ?? item.totalScore ?? item.user_score ?? item.score ?? item.user_total_score;
-    if (raw == null || raw === "") return null;
-    const n = Number(raw);
-    return Number.isNaN(n) ? null : n;
+    const paper = item.paper || item.paperInfo || item.paperVo || {};
+    return firstFiniteNumber(
+        item.userScore,
+        item.user_score,
+        item.obtainedScore,
+        item.finalScore,
+        item.totalScore,
+        item.score,
+        item.user_total_score,
+        paper.userScore,
+        paper.obtainedScore,
+        paper.totalScore,
+    );
 }
 
 async function refreshExamHistory() {
@@ -1960,8 +2044,9 @@ async function refreshExamHistory() {
         row.className = "question-row p-3 exam-record-row-clickable exam-record-row";
         const st = statusLabel(item.status);
         const stClass = st === "进行中" ? "text-warning" : "text-success";
-        const userScore = getRecordUserScore(item);
-        const totalScore = getRecordTotalScore(item);
+        const slash = parseRecordScoreSlash(item);
+        const userScore = slash?.userScore ?? getRecordUserScore(item);
+        const totalScore = slash?.totalScore ?? getRecordTotalScore(item);
         const scoreText = totalScore != null && userScore != null ? `${userScore}/${totalScore}` : (userScore != null ? `${userScore}/-` : "-/-");
         const ratio = totalScore != null && totalScore > 0 && userScore != null ? userScore / totalScore : null;
         let scoreClass = "exam-record-score";
@@ -1993,7 +2078,7 @@ async function refreshExamHistory() {
 async function initBanks() {
     const banks = await fetchBanks();
     bankSelect.innerHTML = "";
-    bankSelectMobile.innerHTML = "";
+    if (bankSelectMobile) bankSelectMobile.innerHTML = "";
     banks.forEach((b) => {
         const opt = document.createElement("option");
         opt.value = b.id;
@@ -2444,13 +2529,19 @@ if (bankSelectMobile) {
             bankSelect.value = bankSelectMobile.value;
             bankSelect.dispatchEvent(new Event("change"));
         }
-        if (window.matchMedia("(max-width: 992px)").matches) closeExamSidebar();
+        if (isSidebarDrawerMode()) closeExamSidebar();
     });
 }
 
 function openExamSidebar() {
     if (!examSidebar || !document.getElementById("examSidebarBackdrop")) return;
     examSidebar.classList.add("exam-sidebar-open");
+    // 抽屉模式下显式展开，避免某些环境里 class 样式未生效
+    if (isSidebarDrawerMode()) {
+        examSidebar.style.transform = "translateX(0)";
+    } else {
+        examSidebar.style.transform = "";
+    }
     document.getElementById("examSidebarBackdrop").classList.add("exam-sidebar-backdrop-visible");
     document.getElementById("examSidebarBackdrop").setAttribute("aria-hidden", "false");
 }
@@ -2459,7 +2550,7 @@ function closeExamSidebar() {
 }
 function toggleExamSidebar() {
     if (!examSidebar) return;
-    if (window.matchMedia("(min-width: 993px)").matches) {
+    if (!isSidebarDrawerMode()) {
         // 桌面端：只有在“收起”后才会显示该按钮
         if (isDesktopSidebarCollapsed()) setDesktopSidebarCollapsed(false);
         else setDesktopSidebarCollapsed(true);
@@ -2515,9 +2606,14 @@ document.addEventListener("click", (e) => {
 moduleMenuBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
         const key = btn.getAttribute("data-module");
+        const drawerMode = isSidebarDrawerMode();
+        console.log("[sidebar] module-menu-btn click", {
+            key,
+            drawerMode,
+        });
         openModule(key);
         closeExamSidebarNow();
-        if (window.matchMedia("(min-width: 993px)").matches) {
+        if (!drawerMode) {
             setDesktopSidebarCollapsed(true);
         }
     });
