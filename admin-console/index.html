@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运维监控台 · 考试中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="./admin.css">
+</head>
+<body class="bg-body-tertiary">
+<div class="container py-4 admin-wrap">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h4 mb-1"><i class="bi bi-speedometer2 text-primary"></i> 应用监控与管理</h1>
+            <p class="text-secondary small mb-0">用户版本（套餐）、登录与活跃、客户端版本</p>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <label class="small text-secondary mb-0">API</label>
+            <input type="text" id="apiBaseInput" class="form-control form-control-sm admin-api-input" placeholder="http://localhost:8081/api">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="saveApiBaseBtn">保存地址</button>
+        </div>
+    </div>
+
+    <div id="gateCard" class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <h2 class="h6 mb-3">管理令牌</h2>
+            <p class="small text-secondary mb-3">在后端设置环境变量 <code>ADMIN_API_TOKEN</code>，将相同值填入下方（仅保存在本机浏览器 sessionStorage）。</p>
+            <div class="input-group input-group-sm mb-2" style="max-width: 420px;">
+                <span class="input-group-text"><i class="bi bi-key"></i></span>
+                <input type="password" id="adminTokenInput" class="form-control" placeholder="X-Admin-Token" autocomplete="off">
+                <button type="button" class="btn btn-primary" id="connectBtn">连接</button>
+            </div>
+            <div id="gateMsg" class="small text-danger d-none"></div>
+        </div>
+    </div>
+
+    <div id="dashboard" class="d-none">
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-secondary small">注册用户总数</div>
+                        <div class="display-6 fw-semibold" id="statTotal">—</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-secondary small">近 7 日活跃（有心跳/登录）</div>
+                        <div class="display-6 fw-semibold" id="statActive">—</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-secondary small">按套餐分布</div>
+                        <div id="statPlans" class="small mt-2">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-secondary small">登录用户数（近 14 天每日）</div>
+                        <div class="display-6 fw-semibold" id="statLoginTotal">—</div>
+                        <canvas id="chartLogin" height="90"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-secondary small">生成题目数量（近 14 天每日）</div>
+                        <div class="display-6 fw-semibold" id="statGeneratedTotal">—</div>
+                        <canvas id="chartGenerated" height="90"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-secondary small">答题次数（近 14 天每日）</div>
+                        <div class="display-6 fw-semibold" id="statAnsweredTotal">—</div>
+                        <canvas id="chartAnswered" height="90"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap gap-2 align-items-end mb-3">
+                    <div>
+                        <label class="form-label small mb-0">套餐筛选</label>
+                        <select id="filterPlan" class="form-select form-select-sm" style="width: 140px;">
+                            <option value="">全部</option>
+                            <option value="trial">trial</option>
+                            <option value="personal">personal</option>
+                            <option value="advanced">advanced</option>
+                        </select>
+                    </div>
+                    <div class="flex-grow-1" style="min-width: 200px;">
+                        <label class="form-label small mb-0">搜索用户名 / 手机号</label>
+                        <input type="text" id="filterQ" class="form-control form-control-sm" placeholder="关键字">
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary" id="searchBtn">查询</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshBtn">刷新统计</button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>手机</th>
+                            <th>套餐</th>
+                            <th>客户端版本</th>
+                            <th>最近登录</th>
+                            <th>最近活跃</th>
+                            <th>注册时间</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="userTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3 small text-secondary">
+                    <span id="pageInfo">—</span>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary" id="prevPageBtn">上一页</button>
+                        <button type="button" class="btn btn-outline-secondary" id="nextPageBtn">下一页</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 修改套餐 -->
+<div class="modal fade" id="planModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">修改用户套餐</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editUserId">
+                <p class="small text-secondary mb-2">用户 <strong id="editUsername"></strong></p>
+                <select id="editPlanSelect" class="form-select">
+                    <option value="trial">trial</option>
+                    <option value="personal">personal</option>
+                    <option value="advanced">advanced</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="savePlanBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 用户统计 -->
+<div class="modal fade" id="usageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="usageModalTitle">用户统计</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card border-0 bg-body-tertiary">
+                            <div class="card-body p-3">
+                                <div class="text-secondary small">生成题目总量</div>
+                                <div class="h4 mb-1">
+                                    <i class="bi bi-lightning-charge-fill text-primary me-2"></i><span id="usageGeneratedTotal">—</span>
+                                </div>
+                                <div class="text-secondary small">今日：<span id="usageGeneratedToday">—</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-0 bg-body-tertiary">
+                            <div class="card-body p-3">
+                                <div class="text-secondary small">答题次数</div>
+                                <div class="h4 mb-1">
+                                    <i class="bi bi-check2-circle text-success me-2"></i><span id="usageAnsweredTotal">—</span>
+                                </div>
+                                <div class="text-secondary small">（已提交试卷数）</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="small text-secondary mt-3">
+                    说明：生成题目基于后端记录；答题次数基于 `exam_record` 的 `SUBMITTED` 状态。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="./admin.js"></script>
+</body>
+</html>

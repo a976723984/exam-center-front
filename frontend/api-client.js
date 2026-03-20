@@ -1,7 +1,9 @@
 (() => {
     const API_BASE = "http://localhost:8081/api";
+    const APP_CLIENT_VERSION = "web-1.0.0";
     const TOKEN_KEY = "exam_center_access_token";
     const USER_KEY = "exam_center_user";
+    let usagePingTimer = null;
     const GLOBAL_ERROR_MODAL_ID = "globalErrorModalBackdrop";
 
     function getToken() {
@@ -20,6 +22,10 @@
     function clearSession() {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
+        if (usagePingTimer != null) {
+            clearInterval(usagePingTimer);
+            usagePingTimer = null;
+        }
     }
 
     function getUser() {
@@ -98,6 +104,7 @@
             if (data?.user) {
                 setSession(token, data.user);
             }
+            startUsagePing();
             return data;
         } catch {
             clearSession();
@@ -105,8 +112,28 @@
         }
     }
 
+    function startUsagePing() {
+        if (usagePingTimer != null) return;
+        const run = async () => {
+            const token = getToken();
+            if (!token) return;
+            try {
+                await requestJson("/telemetry/ping", {
+                    method: "POST",
+                    body: JSON.stringify({ clientVersion: APP_CLIENT_VERSION }),
+                    noRedirectOn401: true,
+                });
+            } catch (_) {
+                /* 静默失败，避免打断主流程 */
+            }
+        };
+        run();
+        usagePingTimer = setInterval(run, 5 * 60 * 1000);
+    }
+
     window.ApiClient = {
         API_BASE,
+        APP_CLIENT_VERSION,
         getToken,
         setSession,
         clearSession,
@@ -117,6 +144,7 @@
         requestJson,
         parseJsonSafe,
         validateMe,
+        startUsagePing,
     };
 
     function ensureErrorModal() {

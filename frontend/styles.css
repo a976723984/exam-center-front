@@ -1610,6 +1610,29 @@ body.phone-bind-open {
    移动端适配（<=576px）
    ================================ */
 @media (max-width: 576px) {
+    /* 登录页：压缩顶部品牌区域，减少首屏高度占用 */
+    .container.py-4.py-lg-5 {
+        padding-top: 12px !important;
+        padding-bottom: 12px !important;
+    }
+
+    .auth-brand-panel {
+        padding: 14px 14px;
+    }
+
+    .auth-brand-content .btn.mb-4 {
+        margin-bottom: 8px !important;
+    }
+
+    .auth-brand-title {
+        font-size: 24px;
+        margin-bottom: 6px;
+    }
+
+    .auth-brand-points {
+        display: none;
+    }
+
     /* 顶部栏（hero）缩小占位 */
     .hero {
         padding: 12px 12px;

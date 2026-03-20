@@ -131,6 +131,11 @@ function closePaymentModal() {
         return;
     }
 
+    // 后端为准：管理员改套餐后，本地 localStorage 也可能仍是旧值
+    if (window.PlanConfig && typeof PlanConfig.setCurrentPlanId === "function" && typeof user.planId === "string") {
+        PlanConfig.setCurrentPlanId(user.planId);
+    }
+
     // 读取后端返回的试用剩余天数与加群二维码地址
     groupQrUrl = profile?.groupQrUrl || "";
     const trialDaysLeft = typeof profile?.trialDaysLeft === "number" ? profile.trialDaysLeft : null;

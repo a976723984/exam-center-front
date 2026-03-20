@@ -66,6 +66,9 @@ function getRedirectTarget() {
 
 async function handleAuthSuccess(data) {
     ApiClient.setSession(data.accessToken, data.user);
+    if (typeof ApiClient.startUsagePing === "function") {
+        ApiClient.startUsagePing();
+    }
     if (!data.user?.phone && window.PhoneBindModal) {
         await PhoneBindModal.ensureBound();
     }

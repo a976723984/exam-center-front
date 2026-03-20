@@ -16,8 +16,9 @@
 ## 目录结构
 ```text
 exam-center/
-  backend/   # Spring Boot + JPA API
-  frontend/  # H5 页面
+  backend/        # Spring Boot + JPA API
+  frontend/       # 用户端 H5
+  admin-console/  # 运维监控台（用户套餐、登录/活跃、客户端版本）
 ```
 
 ## 后端启动
@@ -72,8 +73,19 @@ aliyun:
 
 ## 前端使用
 1. 直接打开 `frontend/index.html`（或用任意静态服务器托管）
-2. 页面默认请求后端地址：`http://localhost:8080/api`
-3. 如需修改后端地址，编辑 `frontend/app.js` 中 `API_BASE`
+2. 页面默认请求后端地址：`http://localhost:8081/api`（见 `frontend/api-client.js` 中 `API_BASE`）
+3. 已登录用户会定期调用 `POST /api/telemetry/ping` 上报客户端版本与活跃时间（用于运维统计）
+
+## 运维监控台（admin-console）
+1. 后端设置环境变量 **`ADMIN_API_TOKEN`**（与 `application.yml` 中 `app.admin.api-token` 一致）
+2. 用浏览器打开 `admin-console/index.html`（建议静态托管，以便跨域访问后端）
+3. 在页面中填写与后端一致的 **管理令牌**，请求将携带请求头 **`X-Admin-Token`**
+4. 能力概览：
+   - `GET /api/admin/stats`：总用户、近 7 日活跃、按套餐（plan）人数
+   - `GET /api/admin/users`：分页列表（可筛选套餐、搜索用户名/手机），展示最近登录、最近活跃、客户端版本
+   - `PATCH /api/admin/users/{id}/plan`：修改用户套餐（`planId`：`trial` / `personal` / `advanced`）
+
+> 未配置 `ADMIN_API_TOKEN` 时，访问 `/api/admin/**` 会返回「未配置运维管理令牌」提示。
 
 ## 核心 API
 - `POST /api/banks`：创建题库

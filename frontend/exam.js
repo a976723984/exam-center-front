@@ -599,12 +599,9 @@ function openModule(key) {
         examLayoutFound: !!examLayout,
         examSidebarFound: !!document.getElementById("examSidebar"),
     });
-    closeExamSidebarNow();
-    // 统一“打开模块后自动收起侧边栏”的行为：
-    // - 移动端：关闭抽屉（由 closeExamSidebarNow/queueMicrotask 兜底）
-    // - 桌面端：隐藏侧边栏并显示左侧打开按钮
-    if (!drawerMode) {
-        setDesktopSidebarCollapsed(true);
+    // 仅在移动端抽屉模式下关闭侧边栏，桌面端保持原样
+    if (drawerMode) {
+        closeExamSidebarNow();
     }
     if (!openedModules.includes(key)) {
         openedModules.push(key);
@@ -621,7 +618,9 @@ function openModule(key) {
         clearExamSessionTimer();
     }
     // 移动端抽屉：避免某些情况下与点击/重绘时序叠加导致未收起
-    queueMicrotask(() => closeExamSidebarNow());
+    if (drawerMode) {
+        queueMicrotask(() => closeExamSidebarNow());
+    }
 }
 
 function closeModule(key) {
@@ -2601,7 +2600,9 @@ statsQueryBtn?.addEventListener("click", () => loadStatsAndCharts());
 document.addEventListener("click", (e) => {
     const btn = e.target.closest(".module-menu-btn");
     if (!btn) return;
-    closeExamSidebarNow();
+    if (isSidebarDrawerMode()) {
+        closeExamSidebarNow();
+    }
 }, true);
 moduleMenuBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -2612,9 +2613,8 @@ moduleMenuBtns.forEach((btn) => {
             drawerMode,
         });
         openModule(key);
-        closeExamSidebarNow();
-        if (!drawerMode) {
-            setDesktopSidebarCollapsed(true);
+        if (drawerMode) {
+            closeExamSidebarNow();
         }
     });
 });
