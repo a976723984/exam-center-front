@@ -10,6 +10,8 @@ const wechatQrModalBackdrop = document.getElementById("wechatQrModalBackdrop");
 const closeWechatQrModalBtn = document.getElementById("closeWechatQrModalBtn");
 const wechatBindModalBackdrop = document.getElementById("wechatBindModalBackdrop");
 const closeWechatBindModalBtn = document.getElementById("closeWechatBindModalBtn");
+const phoneLoginCaptchaBackdrop = document.getElementById("phoneLoginCaptchaBackdrop");
+const confirmPhoneLoginCaptchaBtn = document.getElementById("confirmPhoneLoginCaptchaBtn");
 const msg = document.getElementById("msg");
 const tabButtons = Array.from(document.querySelectorAll("[data-auth-tab]"));
 const tabPanels = Array.from(document.querySelectorAll("[data-auth-panel]"));
@@ -201,7 +203,6 @@ tabButtons.forEach((btn) => {
         const tab = btn.getAttribute("data-auth-tab");
         if (tab) {
             activateTab(tab);
-            if (tab === "phoneLogin") drawCaptcha();
         }
     });
 });
@@ -240,8 +241,7 @@ function drawCaptcha() {
         ctx.lineTo(Math.random() * w, h);
         ctx.stroke();
     }
-    captchaInput.value = "";
-    updateSendSmsButtonState();
+    if (captchaInput) captchaInput.value = "";
 }
 
 function isCaptchaVerified() {
@@ -252,27 +252,53 @@ function updateSendSmsButtonState() {
     if (sendPhoneLoginSmsBtn) {
         const phone = document.getElementById("phoneLoginPhone");
         const phoneOk = phone && /^1\d{10}$/.test(phone.value.trim());
-        sendPhoneLoginSmsBtn.disabled = !phoneOk || !isCaptchaVerified();
+        sendPhoneLoginSmsBtn.disabled = !phoneOk;
     }
+}
+
+function openPhoneLoginCaptchaModal() {
+    if (!phoneLoginCaptchaBackdrop) return;
+    drawCaptcha();
+    openModal(phoneLoginCaptchaBackdrop);
+    phoneLoginCaptchaBackdrop.setAttribute("aria-hidden", "false");
+    setTimeout(() => captchaInput?.focus(), 0);
+}
+
+function closePhoneLoginCaptchaModal() {
+    if (!phoneLoginCaptchaBackdrop) return;
+    closeModal(phoneLoginCaptchaBackdrop);
+    phoneLoginCaptchaBackdrop.setAttribute("aria-hidden", "true");
 }
 
 if (captchaCanvas) {
     captchaCanvas.addEventListener("click", drawCaptcha);
-}
-if (captchaInput) {
-    captchaInput.addEventListener("input", updateSendSmsButtonState);
-    captchaInput.addEventListener("paste", () => setTimeout(updateSendSmsButtonState, 0));
 }
 const phoneLoginPhoneEl = document.getElementById("phoneLoginPhone");
 if (phoneLoginPhoneEl) {
     phoneLoginPhoneEl.addEventListener("input", updateSendSmsButtonState);
 }
 
-sendPhoneLoginSmsBtn?.addEventListener("click", async () => {
+sendPhoneLoginSmsBtn?.addEventListener("click", () => {
     const phone = document.getElementById("phoneLoginPhone").value.trim();
     if (!/^1\d{10}$/.test(phone)) return show("请输入正确的手机号", "danger");
+    openPhoneLoginCaptchaModal();
+});
+
+phoneLoginCaptchaBackdrop?.addEventListener("click", (event) => {
+    if (event.target === phoneLoginCaptchaBackdrop) {
+        closePhoneLoginCaptchaModal();
+    }
+});
+
+confirmPhoneLoginCaptchaBtn?.addEventListener("click", async () => {
+    const phone = document.getElementById("phoneLoginPhone").value.trim();
+    if (!/^1\d{10}$/.test(phone)) {
+        show("请输入正确的手机号", "danger");
+        closePhoneLoginCaptchaModal();
+        return;
+    }
     if (!isCaptchaVerified()) return show("请先正确输入图形验证码", "danger");
-    setBtnLoading(sendPhoneLoginSmsBtn, true, "发送中...");
+    setBtnLoading(confirmPhoneLoginCaptchaBtn, true, "发送中...");
     try {
         const smsData = await ApiClient.requestJson("/auth/sms/send", {
             method: "POST",
@@ -286,11 +312,12 @@ sendPhoneLoginSmsBtn?.addEventListener("click", async () => {
         } else {
             show(smsData.message || "验证码已发送，请注意查收");
         }
-        drawCaptcha();
+        closePhoneLoginCaptchaModal();
     } catch (error) {
         show(error.message, "danger");
+        drawCaptcha();
     } finally {
-        setBtnLoading(sendPhoneLoginSmsBtn, false);
+        setBtnLoading(confirmPhoneLoginCaptchaBtn, false);
     }
 });
 
@@ -366,7 +393,6 @@ wechatVerifyForm.addEventListener("submit", async (event) => {
 
 (async () => {
     activateTab("phoneLogin");
-    drawCaptcha();
     const profile = await ApiClient.validateMe();
     if (profile?.user?.id) {
         if (!profile.user.phone && window.PhoneBindModal) {

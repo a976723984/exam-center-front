@@ -13,9 +13,6 @@
     <div class="auth-shell">
         <section class="auth-brand-panel">
             <div class="auth-brand-content">
-                <a class="btn btn-outline-light btn-sm mb-4" href="./index.html">
-                    <i class="bi bi-house-door me-1"></i><span>返回首页</span>
-                </a>
                 <h1 class="auth-brand-title">
                     <i class="bi bi-mortarboard-fill me-2"></i>小白塔云题库
                 </h1>
@@ -34,7 +31,7 @@
             </div>
             <div class="auth-tabs" role="tablist" aria-label="登录方式">
                 <button class="auth-tab-btn active" type="button" data-auth-tab="phoneLogin">
-                    <i class="bi bi-phone me-1"></i><span>手机号登录</span>
+                    <i class="bi bi-phone me-1"></i><span>手机号</span>
                 </button>
                 <button class="auth-tab-btn" type="button" data-auth-tab="login">
                     <i class="bi bi-person-badge me-1"></i><span>账号登录</span>
@@ -47,12 +44,6 @@
             <div class="auth-tab-panel" data-auth-panel="phoneLogin">
                 <form id="phoneLoginForm" class="d-grid gap-2 mt-3">
                     <input id="phoneLoginPhone" class="form-control" placeholder="手机号" required maxlength="11">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="position-relative flex-grow-1">
-                            <canvas id="captchaCanvas" width="120" height="40" class="border rounded" title="点击刷新"></canvas>
-                            <input id="captchaInput" class="form-control mt-1" placeholder="请输入上图验证码" maxlength="4" autocomplete="off">
-                        </div>
-                    </div>
                     <div class="d-flex gap-2">
                         <input id="phoneLoginCode" class="form-control" placeholder="短信验证码" maxlength="6">
                         <button id="sendPhoneLoginSmsBtn" class="btn btn-outline-secondary flex-shrink-0" type="button" disabled>获取验证码</button>
@@ -89,6 +80,22 @@
 
             <div id="msg" class="alert alert-success mt-3 d-none py-2 mb-0" role="alert"></div>
         </section>
+    </div>
+</div>
+
+<div id="phoneLoginCaptchaBackdrop" class="upload-task-backdrop d-none" aria-hidden="true">
+    <div class="upload-task-modal-card auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="phoneLoginCaptchaTitle">
+        <h3 id="phoneLoginCaptchaTitle" class="h6 mb-2">
+            <i class="bi bi-shield-lock me-1"></i><span>图形验证码</span>
+        </h3>
+        <p class="small text-secondary mb-2">请输入下图中的字符，验证通过后将向您的手机发送短信验证码。</p>
+        <div class="text-center">
+            <canvas id="captchaCanvas" width="120" height="40" class="border rounded" title="点击刷新"></canvas>
+        </div>
+        <input id="captchaInput" class="form-control mt-2" placeholder="请输入上图验证码" maxlength="4" autocomplete="off" inputmode="text">
+        <div class="d-grid mt-3">
+            <button id="confirmPhoneLoginCaptchaBtn" type="button" class="btn btn-primary">发送验证码</button>
+        </div>
     </div>
 </div>
 

@@ -592,6 +592,18 @@ button:active, .link-btn:active {
     .inline-form { flex-direction: column; }
 }
 
+/* 考试统计：平板/手机下图表高度与内边距 */
+@media (max-width: 768px) {
+    .stats-chart-wrap {
+        height: 200px;
+    }
+
+    #moduleStats .card-body {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+}
+
 .doc-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -759,6 +771,29 @@ button:active, .link-btn:active {
     display: grid;
     grid-template-columns: 220px 1fr;
     gap: 14px;
+}
+
+/* 防止主内容区在栅格内被长内容/图表撑出横向滚动 */
+.exam-main {
+    min-width: 0;
+}
+
+/* 考试统计：Chart.js 画布限制在卡片宽度内 */
+.stats-chart-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: 240px;
+}
+
+#moduleStats .stats-query-btn {
+    width: 100%;
+}
+@media (min-width: 768px) {
+    #moduleStats .stats-query-btn {
+        width: auto;
+    }
 }
 
 .exam-sidebar {

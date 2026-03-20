@@ -1008,13 +1008,33 @@ function renderStatsCharts(stats) {
     const wrongCounts = daily.map((d) => d.wrongCount).reverse();
     const avgScores = daily.map((d) => Math.round(d.averageScore * 10) / 10).reverse();
 
+    const narrowStats =
+        typeof window !== "undefined" &&
+        window.matchMedia &&
+        window.matchMedia("(max-width: 768px)").matches;
+
     const commonOptions = {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-            x: { ticks: { maxRotation: 45, maxTicksLimit: 15 } },
-            y: { beginAtZero: true },
+            x: {
+                ticks: {
+                    maxRotation: narrowStats ? 70 : 45,
+                    minRotation: narrowStats ? 45 : 0,
+                    maxTicksLimit: narrowStats ? 8 : 15,
+                    autoSkip: true,
+                    font: { size: narrowStats ? 9 : 11 },
+                },
+                grid: { display: !narrowStats },
+            },
+            y: {
+                beginAtZero: true,
+                ticks: { font: { size: narrowStats ? 9 : 11 } },
+            },
+        },
+        layout: {
+            padding: narrowStats ? { left: 0, right: 4, top: 4, bottom: 0 } : { left: 4, right: 8, top: 8, bottom: 4 },
         },
     };
 
@@ -1063,9 +1083,9 @@ function renderStatsSummary(stats) {
     const withScore = daily.filter((d) => d.examCount > 0);
     const avgScore = withScore.length ? (withScore.reduce((s, d) => s + d.averageScore * d.examCount, 0) / withScore.reduce((s, d) => s + d.examCount, 0)).toFixed(1) : "-";
     statsSummary.innerHTML = `
-        <div class="col-md-4"><span class="text-secondary">总答题次数：</span><strong>${totalExams}</strong></div>
-        <div class="col-md-4"><span class="text-secondary">总错题次数：</span><strong>${totalWrong}</strong></div>
-        <div class="col-md-4"><span class="text-secondary">平均得分：</span><strong>${avgScore}</strong></div>
+        <div class="col-12 col-md-4"><span class="text-secondary">总答题次数：</span><strong>${totalExams}</strong></div>
+        <div class="col-12 col-md-4"><span class="text-secondary">总错题次数：</span><strong>${totalWrong}</strong></div>
+        <div class="col-12 col-md-4"><span class="text-secondary">平均得分：</span><strong>${avgScore}</strong></div>
     `;
 }
 
