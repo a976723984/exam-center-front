@@ -1,5 +1,5 @@
 (() => {
-    const API_BASE = "http://47.96.238.250:8081/api";
+    const API_BASE = "http://localhost:8081/api";
     const APP_CLIENT_VERSION = "web-1.0.0";
     const TOKEN_KEY = "exam_center_access_token";
     const USER_KEY = "exam_center_user";
@@ -35,6 +35,17 @@
         } catch {
             return null;
         }
+    }
+
+    function getDisplayName(user = null) {
+        const u = user || getUser() || {};
+        const rawName = typeof u.name === "string" ? u.name.trim() : "";
+        if (rawName) return rawName;
+        const rawUsername = typeof u.username === "string" ? u.username.trim() : "";
+        if (rawUsername) return rawUsername;
+        const id = u.id != null ? String(u.id).trim() : "";
+        if (id) return `小白塔_${id}`;
+        return "";
     }
 
     function toLogin(keepPath = true) {
@@ -138,6 +149,7 @@
         setSession,
         clearSession,
         getUser,
+        getDisplayName,
         toLogin,
         requireAuth,
         request,

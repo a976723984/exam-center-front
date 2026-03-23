@@ -1,6 +1,6 @@
 /**
  * 小白塔云题库 - 版本与定价配置
- * 试用版：默认免费；个人版：25元/月；高级版：40元/月
+ * 试用版：默认免费；个人版：10元/月；高级版：15元/月
  * 包季每月优惠15%，包年每月优惠35%
  */
 (function () {
@@ -22,21 +22,21 @@
             maxBanks: 20,
             maxQuestionsTotal: null,
             maxQuestionsPerDay: 500,
-            priceMonthly: 25,
-            priceQuarterly: Math.round(25 * 3 * (1 - 0.15)),
-            priceYearly: Math.round(25 * 12 * (1 - 0.35)),
-            desc: "20 个题库，每日题目生成 500 道",
+            priceMonthly: 10,
+            priceQuarterly: Math.round(10 * 3 * (1 - 0.15)),
+            priceYearly: Math.round(10 * 12 * (1 - 0.35)),
+            desc: "20 个题库，每日题目生成 500 道，知识文件容量 10G",
         },
         advanced: {
             id: "advanced",
             name: "高级版",
-            maxBanks: 50,
+            maxBanks: null,
             maxQuestionsTotal: null,
             maxQuestionsPerDay: null,
-            priceMonthly: 40,
-            priceQuarterly: Math.round(40 * 3 * (1 - 0.15)),
-            priceYearly: Math.round(40 * 12 * (1 - 0.35)),
-            desc: "50 个题库，题目生成不限量",
+            priceMonthly: 15,
+            priceQuarterly: Math.round(15 * 3 * (1 - 0.15)),
+            priceYearly: Math.round(15 * 12 * (1 - 0.35)),
+            desc: "题库不限量，题目生成不限量，知识文件容量 20G",
         },
     };
 

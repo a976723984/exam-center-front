@@ -214,14 +214,15 @@
     (async function init() {
         try {
             const profile = await ApiClient.validateMe();
-            isLoggedIn = !!(profile?.user?.username);
+            isLoggedIn = !!(ApiClient.getDisplayName?.(profile?.user));
             if (isLoggedIn && profile?.user && !profile.user.phone && window.PhoneBindModal) {
                 await PhoneBindModal.ensureBound();
-                isLoggedIn = !!ApiClient.getUser()?.username;
+                isLoggedIn = !!ApiClient.getDisplayName?.(ApiClient.getUser());
             }
             const u = ApiClient.getUser();
+            const displayName = ApiClient.getDisplayName?.(u);
             if (isLoggedIn && u && userArea && userAreaText) {
-                userAreaText.textContent = u.username;
+                userAreaText.textContent = displayName;
                 userArea.href = "./center.html";
             } else if (userArea && userAreaText) {
                 userAreaText.textContent = "登录/注册";

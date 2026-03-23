@@ -2826,8 +2826,9 @@ moduleTags.addEventListener("click", (e) => {
 
 (async function initUserArea() {
     const profile = await ApiClient.validateMe();
-    if (profile?.user?.username && userArea && userAreaText) {
-        userAreaText.textContent = profile.user.username;
+    const displayName = ApiClient.getDisplayName?.(profile?.user);
+    if (displayName && userArea && userAreaText) {
+        userAreaText.textContent = displayName;
         userArea.href = "./center.html";
     } else if (userArea && userAreaText) {
         userAreaText.textContent = "登录/注册";

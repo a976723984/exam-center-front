@@ -37,6 +37,8 @@ function getPriceByPeriod(plan, period) {
 function getPlanFeatures(plan) {
     const features = [];
     features.push("题库数量：" + (plan.maxBanks == null ? "不限" : plan.maxBanks + " 个"));
+    const storageGb = plan.id === "trial" ? 1 : plan.id === "personal" ? 10 : 20;
+    features.push("知识文件容量：" + storageGb + "G");
     if (plan.maxQuestionsTotal != null) {
         features.push("题目生成：总量 " + plan.maxQuestionsTotal + " 道");
     } else if (plan.maxQuestionsPerDay != null) {
@@ -149,7 +151,9 @@ function closePaymentModal() {
     }
 
     if (userInfo) {
+        const displayName = ApiClient.getDisplayName?.(user) || "-";
         userInfo.innerHTML = `
+            <div class="mb-2"><strong>名称</strong>：${escapeHtml(displayName)}</div>
             <div class="mb-2"><strong>用户名</strong>：${escapeHtml(user.username || "-")}</div>
             ${user.phone ? `<div class="mb-2"><strong>手机号</strong>：${escapeHtml(user.phone)}</div>` : ""}
         `;

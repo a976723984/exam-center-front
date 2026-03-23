@@ -56,8 +56,8 @@
 
             <div class="auth-tab-panel d-none" data-auth-panel="login">
                 <form id="loginForm" class="d-grid gap-2 mt-3">
-                    <input id="loginUsername" class="form-control" placeholder="用户名" required>
-                    <input id="loginPassword" class="form-control" type="password" placeholder="密码" required>
+                    <input id="loginUsername" class="form-control" placeholder="用户名(10-15位)" required minlength="10" maxlength="15">
+                    <input id="loginPassword" class="form-control" type="password" placeholder="密码(8-15位)" required minlength="8" maxlength="15">
                     <button id="loginBtn" class="btn btn-primary" type="submit">
                         <i class="bi bi-box-arrow-in-right me-1"></i><span>登录</span>
                     </button>
@@ -69,8 +69,8 @@
 
             <div class="auth-tab-panel d-none" data-auth-panel="register">
                 <form id="registerForm" class="d-grid gap-2 mt-3">
-                    <input id="registerUsername" class="form-control" placeholder="用户名(3-32位)" required>
-                    <input id="registerPassword" class="form-control" type="password" placeholder="密码(6位以上)" required>
+                    <input id="registerUsername" class="form-control" placeholder="用户名(10-15位)" required minlength="10" maxlength="15">
+                    <input id="registerPassword" class="form-control" type="password" placeholder="密码(8-15位)" required minlength="8" maxlength="15">
                     <input id="registerPasswordConfirm" class="form-control" type="password" placeholder="再次输入密码" required>
                     <button id="registerBtn" class="btn btn-outline-primary" type="submit">
                         <i class="bi bi-check2-circle me-1"></i><span>注册并登录</span>

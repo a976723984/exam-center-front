@@ -19,6 +19,16 @@ const tabPanels = Array.from(document.querySelectorAll("[data-auth-panel]"));
 let currentWechatState = "";
 let pollTimer = 0;
 
+function isUsernameValid(username) {
+    const len = (username || "").trim().length;
+    return len >= 10 && len <= 15;
+}
+
+function isPasswordValid(password) {
+    const len = (password || "").length;
+    return len >= 8 && len <= 15;
+}
+
 function activateTab(tabName) {
     tabButtons.forEach((btn) => {
         const active = btn.getAttribute("data-auth-tab") === tabName;
@@ -85,9 +95,19 @@ loginForm.addEventListener("submit", async (event) => {
     const btn = document.getElementById("loginBtn");
     setBtnLoading(btn, true, "登录中...");
     try {
+        const username = document.getElementById("loginUsername").value.trim();
+        const password = document.getElementById("loginPassword").value;
+        if (!isUsernameValid(username)) {
+            show("用户名长度需为10-15位", "danger");
+            return;
+        }
+        if (!isPasswordValid(password)) {
+            show("密码长度需为8-15位", "danger");
+            return;
+        }
         const payload = {
-            username: document.getElementById("loginUsername").value.trim(),
-            password: document.getElementById("loginPassword").value,
+            username,
+            password,
         };
         const data = await ApiClient.requestJson("/auth/login", {
             method: "POST",
@@ -103,8 +123,17 @@ loginForm.addEventListener("submit", async (event) => {
 
 registerForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const username = document.getElementById("registerUsername").value.trim();
     const password = document.getElementById("registerPassword").value;
     const passwordConfirm = document.getElementById("registerPasswordConfirm").value;
+    if (!isUsernameValid(username)) {
+        show("用户名长度需为10-15位", "danger");
+        return;
+    }
+    if (!isPasswordValid(password)) {
+        show("密码长度需为8-15位", "danger");
+        return;
+    }
     if (password !== passwordConfirm) {
         show("两次输入的密码不一致", "danger");
         return;
@@ -113,7 +142,7 @@ registerForm.addEventListener("submit", async (event) => {
     setBtnLoading(btn, true, "注册中...");
     try {
         const payload = {
-            username: document.getElementById("registerUsername").value.trim(),
+            username,
             password,
             phone: "",
         };

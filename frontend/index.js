@@ -7,8 +7,9 @@
     const textEl = document.getElementById("userAreaText");
     if (!link || !textEl) return;
     const me = ApiClient.getUser();
-    if (me?.username) {
-        textEl.textContent = me.username;
+    const displayName = ApiClient.getDisplayName?.(me);
+    if (displayName) {
+        textEl.textContent = displayName;
         link.href = "./center.html";
     } else {
         textEl.textContent = "登录/注册";
