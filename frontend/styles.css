@@ -21,6 +21,34 @@
     --transition-fast: .16s ease-out;
 }
 
+/* 统一弱化全站按钮阴影强度 */
+button,
+.btn,
+.link-btn,
+.module-menu-btn.active-menu,
+.plan-period-tab.active,
+.upload-task-fab,
+.add-bank-fab,
+.plan-card__pay-btn:hover {
+    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.22) !important;
+}
+
+button:hover,
+.btn:hover,
+.link-btn:hover,
+.upload-task-fab:hover,
+.add-bank-fab:hover {
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.26) !important;
+}
+
+button:active,
+.btn:active,
+.link-btn:active,
+.upload-task-fab:active,
+.add-bank-fab:active {
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2) !important;
+}
+
 body {
     margin: 0;
     font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -917,13 +945,17 @@ button:active, .link-btn:active {
 }
 
 .exam-sidebar-menu {
+    padding: 8px 10px;
+    gap: 0.75rem;
     max-height: 60vh;
     overflow-y: auto;
+    overflow-x: visible;
 }
 
 .module-menu-btn {
     text-align: left;
     border-radius: 999px;
+    margin: 2px 0;
     padding-inline: 14px;
     background-color: #f8fafc;
     border-color: rgba(148, 163, 184, 0.7);

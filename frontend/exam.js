@@ -63,6 +63,26 @@ const GEN_TASKS_STORAGE_KEY = "exam-center-gen-tasks";
 const genTaskMap = new Map();
 let genTaskSeed = 0;
 
+function hasActiveGenerateTaskForBank(bankId) {
+    if (!bankId) return false;
+    return Array.from(genTaskMap.values()).some(
+        (t) => String(t.bankId) === String(bankId) && (t.status === "PENDING" || t.status === "RUNNING"),
+    );
+}
+
+function syncGenerateButtonDisabledState() {
+    if (!genBtn) return;
+    const bankId = bankSelect?.value;
+    const disabledByTask = hasActiveGenerateTaskForBank(bankId);
+    if (disabledByTask) {
+        genBtn.disabled = true;
+        genBtn.title = "当前题库已有进行中的题目生成任务";
+        return;
+    }
+    genBtn.disabled = false;
+    genBtn.removeAttribute("title");
+}
+
 // 同步其他标签页/窗口的生成任务角标
 window.addEventListener("storage", (event) => {
     if (event.key !== GEN_TASKS_STORAGE_KEY) return;
@@ -698,6 +718,7 @@ function renderGenTasksUI() {
     if (!genTaskList) return;
     if (all.length === 0) {
         genTaskList.innerHTML = '<div class="text-secondary small">暂无题目生成任务</div>';
+        syncGenerateButtonDisabledState();
         return;
     }
     genTaskList.innerHTML = all.map((task) => {
@@ -738,6 +759,7 @@ function renderGenTasksUI() {
             </div>
         `;
     }).join("");
+    syncGenerateButtonDisabledState();
 }
 
 function openGenTaskModal() {
@@ -2331,6 +2353,10 @@ genBtn.addEventListener("click", async () => {
         show("请先选择题库", "danger");
         return;
     }
+    if (hasActiveGenerateTaskForBank(bankId)) {
+        show("该题库已有进行中的题目生成任务，请等待完成后再试", "danger");
+        return;
+    }
     try {
         const docs = await listDocuments(bankId);
         if (isAnyDocumentParsing(docs)) {
@@ -2706,6 +2732,7 @@ bankSelect.addEventListener("change", async () => {
             bankSelectMobile.value = bankId;
         }
         await loadQuestionFilters(bankId);
+        syncGenerateButtonDisabledState();
         await refreshQuestions(1);
         await refreshPapers();
         await refreshExamHistory();
@@ -2850,6 +2877,7 @@ moduleTags.addEventListener("click", (e) => {
             // 兼容旧后端：仍可从浏览器本地恢复角标
             loadPersistedGenTasks();
         }
+        syncGenerateButtonDisabledState();
         updateQuestionUsageHint();
         if (bankSelect.value) {
             await loadQuestionFilters(bankSelect.value);
