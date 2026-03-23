@@ -788,6 +788,10 @@ function openOutlineModal(bankId, documents, preferredDocId, options = {}) {
     const navRow = document.getElementById("outlineNavRow");
     if (navRow) navRow.classList.toggle("d-none", outlineState.docClickOnly);
 
+    if (outlineDocList) {
+        outlineDocList.classList.toggle("d-none", outlineState.documents.length <= 1);
+    }
+
     if (outlineModalBackdrop) {
         outlineModalBackdrop.classList.remove("d-none");
         outlineModalBackdrop.setAttribute("aria-hidden", "false");
@@ -890,9 +894,10 @@ async function loadOutlinePageIntoModal() {
             renderOutlinePageResponse(data);
         } catch (err) {
             if (outlineState.loadSeq !== mySeq) return;
-            outlineContent.classList.remove("outline-content-box--grid");
-            outlineContent.textContent = err?.message || "加载大纲失败";
-            outlineMeta.textContent = "";
+            outlineContent.classList.add("outline-content-box--grid");
+            outlineContent.innerHTML =
+                '<div class="outline-empty-hint text-secondary small text-center py-4">暂无大纲内容</div>';
+            outlineMeta.textContent = "尚未生成大纲（仅展示已保存结果）";
             outlinePageLabel.textContent = "";
         }
         return;
@@ -963,7 +968,7 @@ async function loadOutlinePageIntoModal() {
                 hideOutlineParseProgress();
                 setOutlineNavDisabled(true);
                 outlineContent.textContent =
-                    "暂无可用大纲，或大纲仍在生成中。请先等待知识文件解析完成；如需重新生成，请点击该题库上的「大纲解析」按钮。";
+                    "暂无可用大纲，或大纲仍在生成中。可点击该知识文件上的「解析」按钮进行异步解析。";
                 outlineMeta.textContent = "";
                 outlinePageLabel.textContent = "";
                 return;
@@ -1141,15 +1146,16 @@ function renderDocumentsGrid(bankId, docs, coverUrl) {
                     ? `<div class="doc-cover"><img src="${coverUrl}" alt="cover"></div>`
                     : `<div class="doc-cover doc-cover-fallback">FILE</div>`;
                 const cardClass = "doc-card doc-card--outlineable";
-                const hint = "查看已保存的大纲（网格）；未解析则为空";
                 return `
-                    <div class="${cardClass}" data-outline-bank="${bankId}" data-outline-doc="${doc.id}" title="${escapeHtml(hint)}">
+                    <div class="${cardClass}" data-outline-bank="${bankId}" data-outline-doc="${doc.id}">
                         ${cover}
                         <div class="doc-name" title="${escapeHtml(doc.fileName)}">${escapeHtml(doc.fileName)}</div>
-                        <div class="doc-outline-hint">${escapeHtml(hint)}</div>
-                        <div class="doc-meta d-flex justify-content-between align-items-center gap-2">
-                            <span>${escapeHtml(formatDocStatus(doc.status, doc.parseStatus))}</span>
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-doc-del="${bankId}-${doc.id}">删 除</button>
+                        <div class="doc-status">${escapeHtml(formatDocStatus(doc.status, doc.parseStatus))}</div>
+                        <div class="doc-meta d-flex justify-content-end align-items-center gap-2">
+                            <div class="d-flex gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" data-doc-outline-parse="${bankId}-${doc.id}">大纲解析</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-doc-del="${bankId}-${doc.id}">删 除</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1181,14 +1187,13 @@ function render(banks, docsMap) {
         const div = document.createElement("div");
         div.className = "bank-row p-3";
         div.innerHTML = `
-            <div class="d-flex justify-content-between align-items-start gap-2">
+            <div class="bank-header d-flex justify-content-between align-items-start gap-2">
                 <div>
                     <div class="fw-semibold">${bank.name}</div>
                     <div class="text-secondary small mt-1">${bank.description || "暂无描述"}</div>
                 </div>
-                <div class="d-flex gap-2 flex-wrap">
+                <div class="bank-actions d-flex gap-2 flex-wrap">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-add-file>上传文件</button>
-                    <button type="button" class="btn btn-sm btn-outline-info" data-outline-bank="${bank.id}">大纲解析</button>
                     <button type="button" class="btn btn-sm btn-outline-primary" data-edit>编辑</button>
                     <button type="button" class="btn btn-sm btn-outline-danger" data-del>删除</button>
                 </div>
@@ -1266,13 +1271,6 @@ function render(banks, docsMap) {
             };
             fileInput.click();
         });
-        const outlineBankBtn = div.querySelector("button[data-outline-bank]");
-        if (outlineBankBtn) {
-            outlineBankBtn.addEventListener("click", () => {
-                openOutlineModal(bank.id, docs, null, { restart: true });
-            });
-        }
-
         div.querySelectorAll(".doc-card--outlineable").forEach((card) => {
             card.addEventListener("click", async (ev) => {
                 if (ev.target.closest("button")) return;
@@ -1281,11 +1279,18 @@ function render(banks, docsMap) {
                 if (!bid || !did) return;
                 const doc = docs.find((d) => Number(d.id) === did);
                 if (!doc) return;
-                openOutlineModal(bid, docs, did, { docClickOnly: true });
+                openOutlineModal(bid, [doc], did, { docClickOnly: true });
             });
         });
 
         docs.forEach((doc) => {
+            const parseBtn = div.querySelector(`[data-doc-outline-parse="${bank.id}-${doc.id}"]`);
+            if (parseBtn) {
+                parseBtn.addEventListener("click", async (e) => {
+                    e.stopPropagation();
+                    openOutlineModal(bank.id, [doc], doc.id, { restart: true });
+                });
+            }
             const delBtn = div.querySelector(`[data-doc-del="${bank.id}-${doc.id}"]`);
             if (!delBtn) return;
             delBtn.addEventListener("click", async (e) => {
