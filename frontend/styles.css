@@ -102,6 +102,113 @@ body {
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
 }
 
+/* 题库 — 知识文件大纲弹窗 */
+.outline-modal-card {
+    max-width: 720px;
+    max-height: 90vh;
+    overflow: auto;
+}
+
+.outline-doc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.outline-doc-pick {
+    text-align: left;
+    border-radius: 12px !important;
+    border: 1px solid var(--border, #e5e7eb);
+    background: #fff;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color var(--transition-fast, .16s ease-out), background var(--transition-fast, .16s ease-out);
+}
+
+.outline-doc-pick:hover {
+    border-color: rgba(59, 130, 246, 0.45);
+    background: rgba(219, 234, 254, 0.35);
+}
+
+.outline-doc-pick.is-active {
+    border-color: var(--primary, #3b82f6);
+    background: rgba(219, 234, 254, 0.55);
+}
+
+.outline-content-box {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    max-height: 45vh;
+    overflow: auto;
+}
+
+.outline-content-box.outline-content-box--grid {
+    white-space: normal;
+}
+
+.outline-block-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.outline-block-card {
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    background: #fff;
+    padding: 10px 12px;
+    min-height: 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+.outline-block-card__title {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text, #111827);
+    line-height: 1.35;
+}
+
+.outline-block-card__body {
+    font-size: 0.82rem;
+    color: var(--muted, #6b7280);
+    line-height: 1.5;
+    flex: 1;
+}
+
+.outline-empty-hint {
+    border: 1px dashed var(--border, #e5e7eb);
+    border-radius: 12px;
+    background: rgba(249, 250, 251, 0.8);
+}
+
+.doc-card.doc-card--outlineable {
+    cursor: pointer;
+    transition: border-color var(--transition-fast, .16s ease-out), box-shadow var(--transition-fast, .16s ease-out);
+}
+
+.doc-card.doc-card--outlineable:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.doc-card.doc-card--outline-disabled {
+    cursor: not-allowed;
+    opacity: 0.88;
+}
+
+.doc-card .doc-outline-hint {
+    font-size: 11px;
+    color: var(--muted, #6b7280);
+    margin-top: 4px;
+}
+
 /* 卡片与按钮交互：轻微浮起 */
 .card {
     border-radius: var(--radius-md);

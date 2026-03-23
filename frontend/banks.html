@@ -91,6 +91,30 @@
     </div>
 </div>
 
+<div id="outlineModalBackdrop" class="upload-task-backdrop d-none" aria-hidden="true">
+    <div class="upload-task-modal-card outline-modal-card" role="dialog" aria-modal="true" aria-labelledby="outlineModalTitle" onclick="event.stopPropagation()">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h3 id="outlineModalTitle" class="h6 mb-0"><i class="bi bi-list-nested me-2 text-primary"></i>知识大纲</h3>
+            <button id="closeOutlineModalBtn" type="button" class="btn btn-sm btn-outline-secondary">关闭</button>
+        </div>
+        <p class="small text-secondary mb-2 mb-md-3">在题库卡片上点击<strong>知识文件</strong>：仅展示<strong>已解析并保存</strong>的大纲（先从<strong>知识库检索目录</strong>，再按大章节<strong>生成概括</strong>，网格展示，每章约 100 字内）；未解析则为空。点击<strong>「大纲解析」</strong>可<strong>异步重新解析</strong>，便于后续按章节选题。</p>
+        <div id="outlineDocList" class="outline-doc-list mb-3"></div>
+        <div id="outlineMeta" class="small text-secondary mb-2"></div>
+        <div id="outlineParseProgressWrap" class="d-none">
+            <div id="outlineParseProgressText" class="small text-secondary mb-1"></div>
+            <div class="progress" role="progressbar" aria-label="解析进度">
+                <div id="outlineParseProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%">0%</div>
+            </div>
+        </div>
+        <div id="outlineContent" class="outline-content-box p-3 bg-light rounded border"></div>
+        <div id="outlineNavRow" class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+            <button type="button" id="outlinePrevBtn" class="btn btn-sm btn-outline-primary">上一块</button>
+            <span id="outlinePageLabel" class="small text-secondary"></span>
+            <button type="button" id="outlineNextBtn" class="btn btn-sm btn-outline-primary">下一块</button>
+        </div>
+    </div>
+</div>
+
 <script src="./api-client.js" defer></script>
 <script src="./bind-phone-modal.js" defer></script>
 <script src="./plan-config.js" defer></script>

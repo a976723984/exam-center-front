@@ -21,6 +21,78 @@ const bankNameMap = new Map();
 let uploadTaskSeed = 0;
 let loadingMaskCount = 0;
 
+const OUTLINE_TASK_STORAGE_KEY_PREFIX = "exam-center-outline-tasks-v1";
+
+function getOutlineTaskKey(bankId, documentId) {
+    return `${bankId}:${documentId}`;
+}
+
+function getOutlineTaskStorageKey(bankId, documentId) {
+    return `${OUTLINE_TASK_STORAGE_KEY_PREFIX}:${getOutlineTaskKey(bankId, documentId)}`;
+}
+
+function loadPersistedOutlineTaskId(bankId, documentId) {
+    try {
+        const raw = sessionStorage.getItem(getOutlineTaskStorageKey(bankId, documentId));
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!data?.taskId) return null;
+        return String(data.taskId);
+    } catch {
+        return null;
+    }
+}
+
+function persistOutlineTaskId(bankId, documentId, taskId) {
+    try {
+        sessionStorage.setItem(
+            getOutlineTaskStorageKey(bankId, documentId),
+            JSON.stringify({ taskId: String(taskId), updatedAt: Date.now() }),
+        );
+    } catch {
+        // ignore storage failures
+    }
+}
+
+function clearPersistedOutlineTaskId(bankId, documentId) {
+    try {
+        sessionStorage.removeItem(getOutlineTaskStorageKey(bankId, documentId));
+    } catch {
+        // ignore
+    }
+}
+
+/** 清除某题库下所有大纲任务缓存（session + 内存），用于「重新解析」 */
+function clearOutlineTasksForBank(bankId) {
+    const bid = String(bankId);
+    const prefix = `${OUTLINE_TASK_STORAGE_KEY_PREFIX}:${bid}:`;
+    try {
+        for (let i = sessionStorage.length - 1; i >= 0; i--) {
+            const k = sessionStorage.key(i);
+            if (k && k.startsWith(prefix)) {
+                sessionStorage.removeItem(k);
+            }
+        }
+    } catch {
+        // ignore
+    }
+    for (const key of outlineState.outlineTaskIdByDocId.keys()) {
+        if (key.startsWith(`${bid}:`)) {
+            outlineState.outlineTaskIdByDocId.delete(key);
+        }
+    }
+    for (const key of outlineState.outlineTaskPromiseByDocId.keys()) {
+        if (key.startsWith(`${bid}:`)) {
+            outlineState.outlineTaskPromiseByDocId.delete(key);
+        }
+    }
+    for (const key of outlineState.useTaskForDocPage.keys()) {
+        if (key.startsWith(`${bid}:`)) {
+            outlineState.useTaskForDocPage.delete(key);
+        }
+    }
+}
+
 function saveUploadTasksToStorage() {
     const running = Array.from(uploadTaskMap.values())
         .filter((t) => t.taskId && (t.status === "PENDING" || t.status === "RUNNING"))
@@ -523,6 +595,522 @@ function isImageFile(name = "") {
     return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
 }
 
+function isDocumentOutlineReady(doc) {
+    if (!doc || isImageFile(doc.fileName)) return false;
+    const ps = String(doc.parseStatus || "").toUpperCase();
+    return ps === "PARSE_SUCCESS"
+        || ps === "FILE_IS_READY"
+        || ps === "INDEX_BUILD_SUCCESS";
+}
+
+const outlineModalBackdrop = document.getElementById("outlineModalBackdrop");
+const closeOutlineModalBtn = document.getElementById("closeOutlineModalBtn");
+const outlineDocList = document.getElementById("outlineDocList");
+const outlineMeta = document.getElementById("outlineMeta");
+const outlineParseProgressWrap = document.getElementById("outlineParseProgressWrap");
+const outlineParseProgressText = document.getElementById("outlineParseProgressText");
+const outlineParseProgressBar = document.getElementById("outlineParseProgressBar");
+const outlineContent = document.getElementById("outlineContent");
+const outlinePrevBtn = document.getElementById("outlinePrevBtn");
+const outlineNextBtn = document.getElementById("outlineNextBtn");
+const outlinePageLabel = document.getElementById("outlinePageLabel");
+
+const outlineState = {
+    bankId: null,
+    documents: [],
+    selectedDocId: null,
+    page: 1,
+    size: 1,
+    totalBlocks: 0,
+    extractMode: "",
+    loadSeq: 0,
+    /** 从知识文件卡片进入：只读已保存大纲，不发起异步解析 */
+    docClickOnly: false,
+    /** view：仅展示已有/进行中；restart：本次打开由「大纲解析」触发，首屏可强制重新排队 */
+    openMode: "view",
+    /** taskKey -> 分页是否走异步任务结果接口（否则走同步 GET） */
+    useTaskForDocPage: new Map(),
+    outlineTaskIdByDocId: new Map(),
+    outlineTaskPromiseByDocId: new Map(),
+};
+
+async function fetchDocumentOutline(bankId, documentId, page, size) {
+    const res = await ApiClient.request(
+        `/banks/${bankId}/documents/${documentId}/outline?page=${page}&size=${size}`,
+    );
+    if (!res.ok) {
+        const raw = await res.clone().text().catch(() => "");
+        console.error("[outline] request failed", {
+            bankId,
+            documentId,
+            page,
+            size,
+            status: res.status,
+            statusText: res.statusText,
+            body: raw,
+        });
+        const message = await readErrorMessage(res, "获取大纲失败");
+        throw new Error(message);
+    }
+    const data = await res.json();
+    console.info("[outline] request ok", {
+        bankId,
+        documentId,
+        page,
+        size,
+        extractMode: data?.extractMode,
+        totalBlocks: data?.totalBlocks,
+    });
+    return data;
+}
+
+async function startOutlineGenerateTaskAsync(bankId, documentId, restart = false) {
+    const q = restart ? "?restart=true" : "";
+    const res = await ApiClient.request(
+        `/banks/${bankId}/documents/${documentId}/outline/generate/async${q}`,
+        { method: "POST" },
+    );
+    if (!res.ok) {
+        const message = await readErrorMessage(res, "启动大纲解析任务失败");
+        throw new Error(message);
+    }
+    const data = await res.json().catch(() => null);
+    const taskId = data?.taskId;
+    if (!taskId) throw new Error("服务端未返回任务 ID");
+    return taskId;
+}
+
+async function pollOutlineGenerateTaskStatus(bankId, taskId, { onUpdate, shouldContinue } = {}) {
+    for (let i = 0; i < 360; i++) { // 360 * 2s ~= 12 min
+        if (typeof shouldContinue === "function" && !shouldContinue()) return null;
+        const res = await ApiClient.request(`/banks/${bankId}/documents/outline-generate-tasks/${taskId}`);
+        if (!res.ok) {
+            const message = await readErrorMessage(res, "查询大纲任务进度失败");
+            throw new Error(message);
+        }
+        const data = await res.json();
+        onUpdate?.(data);
+        if (data?.status === "SUCCESS") return data;
+        if (data?.status === "FAILED") throw new Error(data?.message || "大纲解析失败");
+        await sleep(2000);
+    }
+    throw new Error("大纲解析任务轮询超时，请稍后重试");
+}
+
+async function fetchOutlineGenerateTaskPage(bankId, taskId, page, size) {
+    const res = await ApiClient.request(
+        `/banks/${bankId}/documents/outline-generate-tasks/${taskId}/page?page=${page}&size=${size}`,
+    );
+    if (!res.ok) {
+        const message = await readErrorMessage(res, "获取大纲解析结果失败");
+        throw new Error(message);
+    }
+    return res.json();
+}
+
+function renderOutlineDocList() {
+    if (!outlineDocList) return;
+    outlineDocList.innerHTML = outlineState.documents.map((doc) => {
+        const active = Number(doc.id) === Number(outlineState.selectedDocId);
+        const safeName = escapeHtml(doc.fileName || "");
+        const status = escapeHtml(formatDocStatus(doc.status, doc.parseStatus));
+        return `
+            <button type="button" class="outline-doc-pick w-100${active ? " is-active" : ""}"
+                data-outline-pick="${doc.id}"
+                >
+                <span class="d-block fw-semibold text-truncate" title="${safeName}">${safeName}</span>
+                <span class="small text-secondary">${status}</span>
+            </button>
+        `;
+    }).join("");
+}
+
+if (outlineDocList && !outlineDocList.dataset.delegationBound) {
+    outlineDocList.dataset.delegationBound = "1";
+    outlineDocList.addEventListener("click", async (ev) => {
+        const btn = ev.target.closest("[data-outline-pick]");
+        if (!btn) return;
+        const id = Number(btn.getAttribute("data-outline-pick"));
+        if (!id) return;
+        outlineState.selectedDocId = id;
+        outlineState.page = 1;
+        // 弹窗内切换文件：只查看，不再触发重新解析
+        outlineState.openMode = "view";
+        renderOutlineDocList();
+        await loadOutlinePageIntoModal();
+    });
+}
+
+function showOutlineParseProgress(percent = 0, text = "") {
+    if (!outlineParseProgressWrap || !outlineParseProgressBar || !outlineParseProgressText) return;
+    const p = Number.isFinite(Number(percent)) ? Number(percent) : 0;
+    const safe = Math.max(0, Math.min(100, Math.round(p)));
+    outlineParseProgressBar.style.width = safe + "%";
+    outlineParseProgressBar.textContent = safe + "%";
+    outlineParseProgressText.textContent = text ? String(text) : "解析中…";
+    outlineParseProgressWrap.classList.remove("d-none");
+}
+
+function hideOutlineParseProgress() {
+    if (!outlineParseProgressWrap) return;
+    outlineParseProgressWrap.classList.add("d-none");
+}
+
+function setOutlineNavDisabled(disabled) {
+    if (outlinePrevBtn) outlinePrevBtn.disabled = !!disabled;
+    if (outlineNextBtn) outlineNextBtn.disabled = !!disabled;
+}
+
+function openOutlineModal(bankId, documents, preferredDocId, options = {}) {
+    const restart = !!options.restart;
+    outlineState.docClickOnly = !!options.docClickOnly;
+    outlineState.bankId = bankId;
+    outlineState.documents = documents || [];
+    outlineState.size = 1;
+    outlineState.page = 1;
+    outlineState.totalBlocks = 0;
+    outlineState.extractMode = "";
+    outlineState.openMode = restart ? "restart" : "view";
+
+    // 用于避免旧的异步轮询结果覆盖新选择
+    outlineState.loadSeq += 1;
+    if (restart) {
+        clearOutlineTasksForBank(bankId);
+    }
+
+    let pick = preferredDocId;
+    if (!pick) {
+        const first = outlineState.documents.find((d) => d && !isImageFile(d.fileName));
+        pick = first ? first.id : null;
+    }
+    outlineState.selectedDocId = pick;
+
+    const navRow = document.getElementById("outlineNavRow");
+    if (navRow) navRow.classList.toggle("d-none", outlineState.docClickOnly);
+
+    if (outlineModalBackdrop) {
+        outlineModalBackdrop.classList.remove("d-none");
+        outlineModalBackdrop.setAttribute("aria-hidden", "false");
+    }
+    renderOutlineDocList();
+    if (outlineContent) outlineContent.textContent = pick ? "加载中…" : "当前题库没有可解析的知识文件，或文件仍在解析中。请先上传文档并等待「解析成功」。";
+    if (outlineMeta) outlineMeta.textContent = "";
+    if (outlinePageLabel) outlinePageLabel.textContent = "";
+    hideOutlineParseProgress();
+    setOutlineNavDisabled(true);
+    if (pick) {
+        void loadOutlinePageIntoModal();
+    }
+}
+
+function closeOutlineModal() {
+    if (outlineModalBackdrop) {
+        outlineModalBackdrop.classList.add("d-none");
+        outlineModalBackdrop.setAttribute("aria-hidden", "true");
+    }
+    hideOutlineParseProgress();
+}
+
+async function loadOutlinePageIntoModal() {
+    const bankId = outlineState.bankId;
+    const docId = outlineState.selectedDocId;
+    if (!bankId || !docId) return;
+    if (!outlineContent || !outlineMeta || !outlinePageLabel) return;
+
+    const mySeq = ++outlineState.loadSeq;
+    setOutlineNavDisabled(true);
+    hideOutlineParseProgress();
+
+    outlineContent.classList.remove("outline-content-box--grid");
+    outlineContent.textContent = "加载中…";
+    outlineMeta.textContent = "";
+    outlinePageLabel.textContent = "";
+    const taskKey = getOutlineTaskKey(bankId, docId);
+
+    function renderOutlinePageResponse(data) {
+        if (outlineState.loadSeq !== mySeq) return;
+        outlineState.totalBlocks = Number(data.totalBlocks) || 0;
+        outlineState.extractMode = data.extractMode || "";
+        const modeUpper = String(outlineState.extractMode).toUpperCase();
+        const blocks = data.blocks || [];
+
+        const modeLabel =
+            modeUpper === "EMPTY"
+                ? "暂无"
+                : modeUpper === "TOC"
+                  ? "按目录切分"
+                  : modeUpper === "PENDING"
+                    ? "解析中"
+                    : modeUpper === "SEQUENTIAL"
+                      ? "按正文顺序切分"
+                      : "已保存";
+
+        outlineMeta.textContent =
+            modeUpper === "EMPTY"
+                ? "尚未生成大纲（仅展示已保存结果）"
+                : `提取方式：${modeLabel} · 共 ${outlineState.totalBlocks} 个内容块`;
+
+        if (modeUpper === "EMPTY" || (outlineState.totalBlocks === 0 && !blocks.length)) {
+            outlineContent.classList.add("outline-content-box--grid");
+            outlineContent.innerHTML =
+                '<div class="outline-empty-hint text-secondary small text-center py-4">暂无大纲内容</div>';
+        } else if (!blocks.length) {
+            outlineContent.classList.add("outline-content-box--grid");
+            outlineContent.innerHTML =
+                '<div class="outline-empty-hint text-secondary small text-center py-4">当前页无内容</div>';
+        } else {
+            outlineContent.classList.add("outline-content-box--grid");
+            const cards = blocks
+                .map(
+                    (b) => `
+            <div class="outline-block-card">
+                <div class="outline-block-card__title">${escapeHtml(b.title || "（未命名）")}</div>
+                <div class="outline-block-card__body">${escapeHtml(b.content || "")}</div>
+            </div>`,
+                )
+                .join("");
+            outlineContent.innerHTML = `<div class="outline-block-grid">${cards}</div>`;
+        }
+
+        const total = outlineState.totalBlocks;
+        const page = outlineState.page;
+        const totalPages = Math.max(1, Math.ceil(total / outlineState.size));
+        outlinePageLabel.textContent = total
+            ? `第 ${page} / ${totalPages} 页（每页 ${outlineState.size} 块）`
+            : "";
+
+        if (outlinePrevBtn) outlinePrevBtn.disabled = page <= 1;
+        if (outlineNextBtn) outlineNextBtn.disabled = total === 0 || page >= totalPages;
+    }
+
+    if (outlineState.docClickOnly) {
+        try {
+            const data = await fetchDocumentOutline(bankId, docId, 1, 200);
+            if (outlineState.loadSeq !== mySeq) return;
+            renderOutlinePageResponse(data);
+        } catch (err) {
+            if (outlineState.loadSeq !== mySeq) return;
+            outlineContent.classList.remove("outline-content-box--grid");
+            outlineContent.textContent = err?.message || "加载大纲失败";
+            outlineMeta.textContent = "";
+            outlinePageLabel.textContent = "";
+        }
+        return;
+    }
+
+    try {
+        const viewOnly = outlineState.openMode !== "restart";
+
+        // 查看模式：本文件已确认用异步任务分页时，直接拉页（翻页）
+        if (viewOnly && outlineState.useTaskForDocPage.get(taskKey) === true) {
+            const tid =
+                outlineState.outlineTaskIdByDocId.get(taskKey) || loadPersistedOutlineTaskId(bankId, docId);
+            if (tid) {
+                try {
+                    const pageData = await fetchOutlineGenerateTaskPage(
+                        bankId,
+                        tid,
+                        outlineState.page,
+                        outlineState.size,
+                    );
+                    if (outlineState.loadSeq !== mySeq) return;
+                    renderOutlinePageResponse(pageData);
+                    hideOutlineParseProgress();
+                    setOutlineNavDisabled(false);
+                    return;
+                } catch (e) {
+                    console.warn("[outline] task page failed, fallback to sync", e);
+                    outlineState.useTaskForDocPage.delete(taskKey);
+                }
+            } else {
+                outlineState.useTaskForDocPage.delete(taskKey);
+            }
+        }
+
+        // 查看模式：优先同步 GET（已有完整大纲时不再 POST）
+        if (viewOnly) {
+            try {
+                const syncData = await fetchDocumentOutline(
+                    bankId,
+                    docId,
+                    outlineState.page,
+                    outlineState.size,
+                );
+                if (outlineState.loadSeq !== mySeq) return;
+                const mode = String(syncData.extractMode || "").toUpperCase();
+                const isPending = mode === "PENDING";
+                if (!isPending) {
+                    renderOutlinePageResponse(syncData);
+                    outlineState.useTaskForDocPage.set(taskKey, false);
+                    hideOutlineParseProgress();
+                    setOutlineNavDisabled(false);
+                    return;
+                }
+            } catch (syncErr) {
+                console.warn("[outline] sync GET failed", syncErr);
+            }
+        }
+
+        // 查看模式：仅复用已有 taskId（不发起新的异步任务）
+        if (viewOnly) {
+            let taskId = outlineState.outlineTaskIdByDocId.get(taskKey);
+            if (!taskId) {
+                taskId = loadPersistedOutlineTaskId(bankId, docId);
+                if (taskId) outlineState.outlineTaskIdByDocId.set(taskKey, taskId);
+            }
+            if (!taskId) {
+                if (outlineState.loadSeq !== mySeq) return;
+                hideOutlineParseProgress();
+                setOutlineNavDisabled(true);
+                outlineContent.textContent =
+                    "暂无可用大纲，或大纲仍在生成中。请先等待知识文件解析完成；如需重新生成，请点击该题库上的「大纲解析」按钮。";
+                outlineMeta.textContent = "";
+                outlinePageLabel.textContent = "";
+                return;
+            }
+            showOutlineParseProgress(0, "继续显示大纲解析任务…");
+            let taskPromise = outlineState.outlineTaskPromiseByDocId.get(taskKey);
+            if (!taskPromise) {
+                taskPromise = Promise.resolve(taskId);
+            }
+            const resolvedTaskId = await taskPromise;
+            if (outlineState.loadSeq !== mySeq) return;
+
+            const result = await pollOutlineGenerateTaskStatus(
+                bankId,
+                resolvedTaskId,
+                {
+                    shouldContinue: () => outlineState.loadSeq === mySeq,
+                    onUpdate: (t) => {
+                        if (outlineState.loadSeq !== mySeq) return;
+                        const pct = t?.progressPercent;
+                        const stage = t?.currentStage || "解析中…";
+                        showOutlineParseProgress(pct ?? 0, stage);
+                    },
+                },
+            );
+
+            if (!result) return;
+
+            if (outlineState.loadSeq !== mySeq) return;
+            hideOutlineParseProgress();
+            outlineContent.textContent = "生成大纲中…";
+
+            const pageData = await fetchOutlineGenerateTaskPage(
+                bankId,
+                resolvedTaskId,
+                outlineState.page,
+                outlineState.size,
+            );
+            if (outlineState.loadSeq !== mySeq) return;
+            renderOutlinePageResponse(pageData);
+            outlineState.useTaskForDocPage.set(taskKey, true);
+            outlineState.outlineTaskIdByDocId.set(taskKey, resolvedTaskId);
+            persistOutlineTaskId(bankId, docId, resolvedTaskId);
+            outlineState.openMode = "view";
+            setOutlineNavDisabled(false);
+            return;
+        }
+
+        // 重新解析：POST ?restart=true 并排程轮询
+        showOutlineParseProgress(0, "重新解析大纲…");
+        let taskPromise = outlineState.outlineTaskPromiseByDocId.get(taskKey);
+        if (!taskPromise) {
+            taskPromise = startOutlineGenerateTaskAsync(bankId, docId, true)
+                .then((newTaskId) => {
+                    outlineState.outlineTaskIdByDocId.set(taskKey, newTaskId);
+                    persistOutlineTaskId(bankId, docId, newTaskId);
+                    return newTaskId;
+                })
+                .finally(() => {
+                    outlineState.outlineTaskPromiseByDocId.delete(taskKey);
+                });
+            outlineState.outlineTaskPromiseByDocId.set(taskKey, taskPromise);
+        }
+
+        const resolvedTaskId = await taskPromise;
+        if (outlineState.loadSeq !== mySeq) return;
+
+        const result = await pollOutlineGenerateTaskStatus(
+            bankId,
+            resolvedTaskId,
+            {
+                shouldContinue: () => outlineState.loadSeq === mySeq,
+                onUpdate: (t) => {
+                    if (outlineState.loadSeq !== mySeq) return;
+                    const pct = t?.progressPercent;
+                    const stage = t?.currentStage || "解析中…";
+                    showOutlineParseProgress(pct ?? 0, stage);
+                },
+            },
+        );
+
+        if (!result) return;
+
+        if (outlineState.loadSeq !== mySeq) return;
+        hideOutlineParseProgress();
+        outlineContent.textContent = "生成大纲中…";
+
+        const pageData = await fetchOutlineGenerateTaskPage(
+            bankId,
+            resolvedTaskId,
+            outlineState.page,
+            outlineState.size,
+        );
+        if (outlineState.loadSeq !== mySeq) return;
+        renderOutlinePageResponse(pageData);
+        outlineState.useTaskForDocPage.set(taskKey, true);
+        outlineState.openMode = "view";
+        setOutlineNavDisabled(false);
+    } catch (err) {
+        console.error("[outline] render failed", {
+            bankId,
+            docId,
+            page: outlineState.page,
+            size: outlineState.size,
+            error: err,
+        });
+        // 如果复用的 taskId 已不存在（例如后端重启导致内存任务丢失），清理前端缓存以便下次重新启动
+        const msg = err?.message ? String(err.message) : "";
+        if (msg.includes("大纲解析任务不存在") || msg.includes("任务不存在")) {
+            clearPersistedOutlineTaskId(bankId, docId);
+            outlineState.outlineTaskIdByDocId.delete(taskKey);
+            outlineState.outlineTaskPromiseByDocId.delete(taskKey);
+            outlineState.useTaskForDocPage.delete(taskKey);
+        }
+        hideOutlineParseProgress();
+        setOutlineNavDisabled(true);
+        outlineContent.classList.remove("outline-content-box--grid");
+        outlineContent.textContent = err?.message || "加载大纲失败";
+        outlineMeta.textContent = "";
+        if (outlinePageLabel) outlinePageLabel.textContent = "";
+    }
+}
+
+if (closeOutlineModalBtn) {
+    closeOutlineModalBtn.addEventListener("click", () => closeOutlineModal());
+}
+if (outlineModalBackdrop) {
+    outlineModalBackdrop.addEventListener("click", (e) => {
+        if (e.target === outlineModalBackdrop) closeOutlineModal();
+    });
+}
+if (outlinePrevBtn) {
+    outlinePrevBtn.addEventListener("click", async () => {
+        if (outlineState.page <= 1) return;
+        outlineState.page -= 1;
+        await loadOutlinePageIntoModal();
+    });
+}
+if (outlineNextBtn) {
+    outlineNextBtn.addEventListener("click", async () => {
+        const totalPages = Math.max(1, Math.ceil(outlineState.totalBlocks / outlineState.size));
+        if (outlineState.page >= totalPages) return;
+        outlineState.page += 1;
+        await loadOutlinePageIntoModal();
+    });
+}
+
 function getCoverUrlForBank(bank, docs) {
     const imageDoc = docs.find((doc) => isImageFile(doc.fileName));
     if (imageDoc) {
@@ -552,13 +1140,16 @@ function renderDocumentsGrid(bankId, docs, coverUrl) {
                 const cover = coverUrl
                     ? `<div class="doc-cover"><img src="${coverUrl}" alt="cover"></div>`
                     : `<div class="doc-cover doc-cover-fallback">FILE</div>`;
+                const cardClass = "doc-card doc-card--outlineable";
+                const hint = "查看已保存的大纲（网格）；未解析则为空";
                 return `
-                    <div class="doc-card">
+                    <div class="${cardClass}" data-outline-bank="${bankId}" data-outline-doc="${doc.id}" title="${escapeHtml(hint)}">
                         ${cover}
                         <div class="doc-name" title="${escapeHtml(doc.fileName)}">${escapeHtml(doc.fileName)}</div>
+                        <div class="doc-outline-hint">${escapeHtml(hint)}</div>
                         <div class="doc-meta d-flex justify-content-between align-items-center gap-2">
                             <span>${escapeHtml(formatDocStatus(doc.status, doc.parseStatus))}</span>
-                            <button class="btn btn-sm btn-outline-danger py-0 px-2" data-doc-del="${bankId}-${doc.id}">删 除</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-doc-del="${bankId}-${doc.id}">删 除</button>
                         </div>
                     </div>
                 `;
@@ -595,10 +1186,11 @@ function render(banks, docsMap) {
                     <div class="fw-semibold">${bank.name}</div>
                     <div class="text-secondary small mt-1">${bank.description || "暂无描述"}</div>
                 </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-secondary" data-add-file>上传文件</button>
-                    <button class="btn btn-sm btn-outline-primary" data-edit>编辑</button>
-                    <button class="btn btn-sm btn-outline-danger" data-del>删除</button>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-add-file>上传文件</button>
+                    <button type="button" class="btn btn-sm btn-outline-info" data-outline-bank="${bank.id}">大纲解析</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-edit>编辑</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-del>删除</button>
                 </div>
             </div>
             ${renderDocumentsGrid(bank.id, docs, coverUrl)}
@@ -674,10 +1266,30 @@ function render(banks, docsMap) {
             };
             fileInput.click();
         });
+        const outlineBankBtn = div.querySelector("button[data-outline-bank]");
+        if (outlineBankBtn) {
+            outlineBankBtn.addEventListener("click", () => {
+                openOutlineModal(bank.id, docs, null, { restart: true });
+            });
+        }
+
+        div.querySelectorAll(".doc-card--outlineable").forEach((card) => {
+            card.addEventListener("click", async (ev) => {
+                if (ev.target.closest("button")) return;
+                const bid = Number(card.getAttribute("data-outline-bank"));
+                const did = Number(card.getAttribute("data-outline-doc"));
+                if (!bid || !did) return;
+                const doc = docs.find((d) => Number(d.id) === did);
+                if (!doc) return;
+                openOutlineModal(bid, docs, did, { docClickOnly: true });
+            });
+        });
+
         docs.forEach((doc) => {
             const delBtn = div.querySelector(`[data-doc-del="${bank.id}-${doc.id}"]`);
             if (!delBtn) return;
-            delBtn.addEventListener("click", async () => {
+            delBtn.addEventListener("click", async (e) => {
+                e.stopPropagation();
                 if (!window.confirm(`确认删除文件“${doc.fileName}”？`)) return;
                 await runWithButtonLoading(delBtn, async () => {
                     try {
