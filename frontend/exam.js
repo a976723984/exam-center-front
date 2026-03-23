@@ -659,11 +659,13 @@ async function listDocuments(bankId) {
     return res.json();
 }
 
-async function startGenerateTaskAsync(bankId, count, types) {
+async function startGenerateTaskAsync(bankId, count, types, outlineGuides) {
+    const payload = { count, types };
+    if (Array.isArray(outlineGuides) && outlineGuides.length) payload.outlineGuides = outlineGuides;
     const res = await ApiClient.request(`/banks/${bankId}/questions/generate/async`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ count, types }),
+        body: JSON.stringify(payload),
     });
     if (!res.ok) {
         const msg = await readErrorMessage(res, "提交生成任务失败");
@@ -2117,14 +2119,177 @@ async function initBanks() {
 
 const generateQuestionModalEl = document.getElementById("generateQuestionModal");
 const dialogGenCountEl = document.getElementById("dialogGenCount");
+const dialogGenOutlineWrap = document.getElementById("dialogGenOutlineWrap");
+const dialogGenOutlineHint = document.getElementById("dialogGenOutlineHint");
+let dialogGenOutlineGuideMap = new Map(); // guideKey -> { title, content }
+let dialogGenOutlineInitPromise = null;
 if (generateQuestionModalEl && window.bootstrap) {
     generateQuestionModalEl.addEventListener("shown.bs.modal", () => {
         if (dialogGenCountEl) dialogGenCountEl.value = "8";
         initDialogGenTypes();
+        dialogGenOutlineInitPromise = initDialogGenOutlines(bankSelect?.value);
     });
 }
 
-function runGenerateQuestionTask(bankId, count, types) {
+function isImageFileName(name = "") {
+    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(String(name || ""));
+}
+
+async function fetchDocumentOutline(bankId, documentId) {
+    const res = await ApiClient.request(`/banks/${bankId}/documents/${documentId}/outline?page=1&size=200`);
+    if (!res.ok) {
+        const msg = await readErrorMessage(res, "获取大纲失败");
+        throw new Error(msg);
+    }
+    return res.json();
+}
+
+function getSelectedDialogGenOutlineGuides() {
+    if (!dialogGenOutlineWrap) return [];
+    const checked = Array.from(dialogGenOutlineWrap.querySelectorAll("input[data-outline-block-cb]:checked"));
+    const out = [];
+    checked.forEach((cb) => {
+        const key = cb.getAttribute("data-guide-key");
+        const guide = dialogGenOutlineGuideMap.get(key);
+        if (!guide) return;
+        const t = String(guide.title || "").trim();
+        const c = String(guide.content || "").trim();
+        if (!t && !c) return;
+        out.push(c ? (t ? `${t}\n${c}` : c) : t);
+    });
+    return out;
+}
+
+let dialogGenOutlineChangeBound = false;
+function bindDialogGenOutlineSelectionEvents() {
+    if (!dialogGenOutlineWrap || dialogGenOutlineChangeBound) return;
+    dialogGenOutlineChangeBound = true;
+    dialogGenOutlineWrap.addEventListener("change", (ev) => {
+        const target = ev.target;
+        if (!target || !target.matches) return;
+        if (target.matches('input[data-outline-doc-cb]')) {
+            const docId = target.getAttribute("data-outline-doc-id");
+            const checked = !!target.checked;
+            dialogGenOutlineWrap
+                .querySelectorAll(`input[data-outline-doc-id="${docId}"][data-outline-block-cb]`)
+                .forEach((cb) => {
+                    cb.checked = checked;
+                });
+            return;
+        }
+        if (target.matches('input[data-outline-block-cb]')) {
+            const docId = target.getAttribute("data-outline-doc-id");
+            const docCb = dialogGenOutlineWrap.querySelector(`input[data-outline-doc-id="${docId}"][data-outline-doc-cb]`);
+            const blocks = Array.from(
+                dialogGenOutlineWrap.querySelectorAll(`input[data-outline-doc-id="${docId}"][data-outline-block-cb]`)
+            );
+            if (docCb) docCb.checked = blocks.some((b) => b.checked);
+        }
+    });
+}
+
+async function initDialogGenOutlines(bankId) {
+    if (!dialogGenOutlineWrap || !dialogGenOutlineHint) return;
+    dialogGenOutlineGuideMap = new Map();
+    bindDialogGenOutlineSelectionEvents();
+
+    dialogGenOutlineWrap.innerHTML = "";
+    dialogGenOutlineHint.textContent = "加载大纲块中…";
+
+    if (!bankId) {
+        dialogGenOutlineHint.textContent = "未选择题库";
+        return;
+    }
+
+    let docs = [];
+    try {
+        docs = await listDocuments(bankId);
+    } catch (e) {
+        dialogGenOutlineHint.textContent = e?.message || "加载知识文件失败";
+        dialogGenOutlineWrap.innerHTML = "";
+        return;
+    }
+
+    const candidateDocs = (docs || [])
+        .filter((d) => !isImageFileName(d?.fileName));
+
+    if (!candidateDocs.length) {
+        dialogGenOutlineHint.textContent = "当前题库暂无可用的非图片知识文件";
+        dialogGenOutlineWrap.innerHTML = "";
+        return;
+    }
+
+    const docCards = [];
+    for (const doc of candidateDocs) {
+        const docId = Number(doc.id);
+        if (!docId) continue;
+
+        let outline;
+        try {
+            outline = await fetchDocumentOutline(bankId, docId);
+        } catch (_) {
+            continue;
+        }
+        const blocks = Array.isArray(outline?.blocks) ? outline.blocks : [];
+        if (!blocks.length) continue;
+
+        const blocksHtml = blocks
+            .map((b) => {
+                const idx = b.index ?? 0;
+                const key = `${docId}:${idx}`;
+                dialogGenOutlineGuideMap.set(key, {
+                    title: b.title || "",
+                    content: b.content || "",
+                });
+                const label = b.title ? String(b.title) : `块 ${idx}`;
+                const tooltip = b.content ? String(b.content) : "";
+                return `
+                    <label class="form-check form-check-inline me-0 mb-1" style="min-width: 180px;">
+                        <input
+                            class="form-check-input me-1"
+                            type="checkbox"
+                            data-outline-doc-id="${docId}"
+                            data-outline-block-cb
+                            data-guide-key="${key}"
+                            value="${key}"
+                        />
+                        <span class="small text-truncate" title="${escapeHtml(tooltip)}">${escapeHtml(label)}</span>
+                    </label>
+                `;
+            })
+            .join("");
+
+        const fileName = doc.fileName || `文档 ${docId}`;
+        docCards.push(`
+            <div class="border rounded-3 p-3 bg-light">
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                    <label class="form-check mb-0">
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            data-outline-doc-id="${docId}"
+                            data-outline-doc-cb
+                        />
+                        <span class="small fw-semibold">${escapeHtml(fileName)}</span>
+                    </label>
+                    <span class="small text-secondary">${blocks.length} 个大纲块</span>
+                </div>
+                <div class="d-flex flex-wrap gap-2">${blocksHtml}</div>
+            </div>
+        `);
+    }
+
+    if (!docCards.length) {
+        dialogGenOutlineHint.textContent = "当前题库暂无可用的大纲块";
+        dialogGenOutlineWrap.innerHTML = "";
+        return;
+    }
+
+    dialogGenOutlineHint.textContent = "已加载，可按需勾选";
+    dialogGenOutlineWrap.innerHTML = docCards.join("");
+}
+
+function runGenerateQuestionTask(bankId, count, types, outlineGuides) {
     const localId = `gen-${Date.now()}-${genTaskSeed++}`;
     const task = {
         localId,
@@ -2139,7 +2304,7 @@ function runGenerateQuestionTask(bankId, count, types) {
     };
     genTaskMap.set(localId, task);
     renderGenTasksUI();
-    startGenerateTaskAsync(bankId, count, types)
+    startGenerateTaskAsync(bankId, count, types, outlineGuides)
         .then((taskId) => {
             const t = genTaskMap.get(localId);
             if (t) {
@@ -2183,6 +2348,14 @@ document.getElementById("generateQuestionModalConfirm")?.addEventListener("click
     const bankId = bankSelect.value;
     const count = Number(dialogGenCountEl?.value || 8);
     const types = getDialogGenTypes();
+    if (dialogGenOutlineInitPromise) {
+        try {
+            await dialogGenOutlineInitPromise;
+        } catch (_) {
+            // outline loading fails shouldn't block question generation
+        }
+    }
+    const outlineGuides = getSelectedDialogGenOutlineGuides();
     if (!types.length) {
         show("请至少选择一种题型", "danger");
         return;
@@ -2200,7 +2373,7 @@ document.getElementById("generateQuestionModalConfirm")?.addEventListener("click
     }
     bootstrap.Modal.getInstance(document.getElementById("generateQuestionModal"))?.hide();
     await runWithButtonLoading(genBtn, async () => {
-        runGenerateQuestionTask(bankId, count, types);
+        runGenerateQuestionTask(bankId, count, types, outlineGuides);
     }, "提交中...");
 });
 
