@@ -1,5 +1,5 @@
 (() => {
-    const API_BASE = "http://127.0.0.1:8081/api";
+    const API_BASE = "http://47.96.238.250:8081/api";
     const APP_CLIENT_VERSION = "web-1.0.0";
     const TOKEN_KEY = "exam_center_access_token";
     const USER_KEY = "exam_center_user";
