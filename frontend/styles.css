@@ -1994,6 +1994,38 @@ body.phone-bind-open {
     .mobile-bottom-nav-link.active {
         color: #1d4ed8;
     }
+
+    /* 移动端：浮动按钮高于底部导航，且尺寸更紧凑 */
+    .upload-task-fab {
+        z-index: 1300 !important;
+        width: 52px;
+        height: 52px;
+        font-size: 11px;
+        right: 14px;
+        bottom: 76px;
+    }
+
+    .upload-task-fab-count {
+        min-width: 20px;
+        height: 20px;
+        line-height: 20px;
+        font-size: 10px;
+        top: -3px;
+        right: -3px;
+        padding: 0 5px;
+    }
+
+    .add-bank-fab {
+        z-index: 1300 !important;
+        width: 48px;
+        height: 48px;
+        right: 14px;
+        bottom: 76px;
+    }
+
+    .add-bank-fab .add-bank-fab-icon {
+        font-size: 1.45rem;
+    }
 }
 
 .web-side-submenu .module-menu-btn {
