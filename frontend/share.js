@@ -62,18 +62,24 @@
         }
         publicList.innerHTML = items.map((p) => `
             <div class="col-md-6 col-lg-4">
-                <div class="card border-0 shadow-sm h-100">
+                <div class="card border-0 shadow-sm h-100 public-paper-card" data-id="${p.id}" role="button" tabindex="0" style="cursor:pointer;">
                     <div class="card-body p-3">
                         <h6 class="card-title mb-2">${escapeHtml(p.title || "未命名")}</h6>
                         <div class="small text-secondary mb-2">分享者：${escapeHtml(p.ownerName || "-")}</div>
                         <div class="small text-secondary mb-2">浏览 ${p.viewCount ?? 0} · 订阅 ${p.subscribeCount ?? 0} · 评分 ${p.averageRating != null ? p.averageRating : "-"}</div>
-                        <button class="btn btn-sm btn-outline-primary" data-id="${p.id}" type="button">查看</button>
                     </div>
                 </div>
             </div>
         `).join("");
-        publicList.querySelectorAll("[data-id]").forEach((btn) => {
-            btn.addEventListener("click", () => showDetail(Number(btn.getAttribute("data-id"))));
+        publicList.querySelectorAll(".public-paper-card[data-id]").forEach((card) => {
+            const paperId = Number(card.getAttribute("data-id"));
+            card.addEventListener("click", () => showDetail(paperId));
+            card.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    showDetail(paperId);
+                }
+            });
         });
     }
 
@@ -169,7 +175,7 @@
         }
     }
 
-    backToListBtn.addEventListener("click", showList);
+    backToListBtn?.addEventListener("click", showList);
 
     subscribeBtn.addEventListener("click", async () => {
         const bankId = subscribeBankSelect.value;

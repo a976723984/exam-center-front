@@ -8,28 +8,26 @@
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="./styles.css">
 </head>
-<body class="bg-body-tertiary">
-<div class="container py-4">
-    <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center p-4 rounded-4 hero shadow-sm mb-4">
-        <div>
-            <h1 class="h3 mb-1">
-                <i class="bi bi-folder-check me-2"></i>题库管理
-            </h1>
-            <p class="mb-0 text-light-emphasis">新增、编辑、删除题库，并支持上传知识文件</p>
-        </div>
-        <div class="d-flex gap-2 align-items-center flex-wrap">
-            <a class="btn btn-outline-light" href="./index.html">
-                <i class="bi bi-house-door me-1"></i><span>返回首页</span>
+<body class="bg-body-tertiary has-mobile-bottom-nav">
+<div class="web-shell">
+    <aside class="web-sidebar">
+        <div class="web-sidebar-brand"><i class="bi bi-mortarboard-fill"></i>小白塔云题库</div>
+        <nav class="web-side-nav">
+            <a class="web-side-link" href="./index.html"><i class="bi bi-house-door"></i>首页</a>
+            <a class="web-side-link active" href="./banks.html"><i class="bi bi-folder-check"></i>题库管理</a>
+            <a class="web-side-link" href="./exam.html"><i class="bi bi-ui-checks-grid"></i>组卷考试</a>
+            <a class="web-side-link" href="./share.html"><i class="bi bi-share-fill"></i>试卷分享区</a>
+        </nav>
+    </aside>
+    <main class="web-main">
+        <header class="web-topbar">
+            <div></div>
+            <a id="userArea" class="web-topbar-user" href="./login.html">
+                <span class="web-topbar-user-avatar"><i class="bi bi-person-fill"></i></span>
+                <span id="userAreaText">登录/注册</span>
             </a>
-            <a class="btn btn-light" href="./exam.html">
-                <i class="bi bi-ui-checks-grid me-1"></i><span>去组卷考试</span>
-            </a>
-            <a id="userArea" class="btn btn-outline-light text-nowrap" href="./login.html">
-                <i class="bi bi-person-circle me-1"></i><span id="userAreaText">登录/注册</span>
-            </a>
-        </div>
-    </div>
-
+        </header>
+        <div class="web-main-body container-fluid py-4">
     <div class="row g-4">
         <section class="col-12">
             <div class="card border-0 shadow-sm">
@@ -44,13 +42,27 @@
                         </div>
                     </div>
                     <div id="bankList" class="d-grid gap-3"></div>
+                    <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+                        <button id="bankPrevBtn" class="btn btn-sm btn-outline-secondary" type="button">上一页</button>
+                        <span id="bankPageInfo" class="small text-secondary">第 1 / 1 页</span>
+                        <button id="bankNextBtn" class="btn btn-sm btn-outline-secondary" type="button">下一页</button>
+                    </div>
                 </div>
             </div>
         </section>
     </div>
 
     <div id="msg" class="alert alert-success mt-3 d-none py-2 mb-0" role="alert"></div>
+        </div>
+    </main>
 </div>
+<nav class="mobile-bottom-nav" aria-label="移动端底部导航">
+    <a class="mobile-bottom-nav-link" href="./index.html"><i class="bi bi-house-door"></i><span>首页</span></a>
+    <a class="mobile-bottom-nav-link active" href="./banks.html"><i class="bi bi-folder-check"></i><span>题库管理</span></a>
+    <a class="mobile-bottom-nav-link" href="./exam.html"><i class="bi bi-ui-checks-grid"></i><span>组卷考试</span></a>
+    <a class="mobile-bottom-nav-link" href="./share.html"><i class="bi bi-share-fill"></i><span>分享区</span></a>
+    <a class="mobile-bottom-nav-link" href="./center.html"><i class="bi bi-person-circle"></i><span>个人中心</span></a>
+</nav>
 
 <div id="addBankModalBackdrop" class="upload-task-backdrop d-none" aria-hidden="true">
     <div class="upload-task-modal-card add-bank-modal-card" role="dialog" aria-modal="true" onclick="event.stopPropagation()">

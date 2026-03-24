@@ -14,12 +14,17 @@ const addBankModalBackdrop = document.getElementById("addBankModalBackdrop");
 const addBankFab = document.getElementById("addBankFab");
 const userArea = document.getElementById("userArea");
 const userAreaText = document.getElementById("userAreaText");
+const bankPrevBtn = document.getElementById("bankPrevBtn");
+const bankNextBtn = document.getElementById("bankNextBtn");
+const bankPageInfo = document.getElementById("bankPageInfo");
 
 const UPLOAD_TASKS_STORAGE_KEY = "exam-center-upload-tasks";
 const uploadTaskMap = new Map();
 const bankNameMap = new Map();
 let uploadTaskSeed = 0;
 let loadingMaskCount = 0;
+let currentBankPage = 1;
+const bankPageSize = 5;
 
 const OUTLINE_TASK_STORAGE_KEY_PREFIX = "exam-center-outline-tasks-v1";
 
@@ -1178,10 +1183,23 @@ function render(banks, docsMap) {
     }
     bankList.innerHTML = "";
     if (!banks.length) {
+        currentBankPage = 1;
+        if (bankPageInfo) bankPageInfo.textContent = "第 1 / 1 页";
+        if (bankPrevBtn) bankPrevBtn.disabled = true;
+        if (bankNextBtn) bankNextBtn.disabled = true;
         bankList.innerHTML = '<div class="text-secondary small">暂无题库</div>';
         return;
     }
-    banks.forEach((bank) => {
+    const totalPages = Math.max(1, Math.ceil(banks.length / bankPageSize));
+    if (currentBankPage > totalPages) currentBankPage = totalPages;
+    if (currentBankPage < 1) currentBankPage = 1;
+    const start = (currentBankPage - 1) * bankPageSize;
+    const pageBanks = banks.slice(start, start + bankPageSize);
+    if (bankPageInfo) bankPageInfo.textContent = `第 ${currentBankPage} / ${totalPages} 页`;
+    if (bankPrevBtn) bankPrevBtn.disabled = currentBankPage <= 1;
+    if (bankNextBtn) bankNextBtn.disabled = currentBankPage >= totalPages;
+
+    pageBanks.forEach((bank) => {
         const docs = docsMap.get(bank.id) || [];
         const coverUrl = getCoverUrlForBank(bank, docs);
         const div = document.createElement("div");
@@ -1340,6 +1358,17 @@ uploadTaskModalBackdrop.addEventListener("click", (event) => {
     if (event.target === uploadTaskModalBackdrop) {
         closeUploadTaskModal();
     }
+});
+
+bankPrevBtn?.addEventListener("click", async () => {
+    if (currentBankPage <= 1) return;
+    currentBankPage -= 1;
+    await refresh();
+});
+
+bankNextBtn?.addEventListener("click", async () => {
+    currentBankPage += 1;
+    await refresh();
 });
 
 function openAddBankModal() {

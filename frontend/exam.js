@@ -48,6 +48,8 @@ const msg = document.getElementById("msg");
 const examSidebarToggle = document.getElementById("examSidebarToggle");
 const examSidebar = document.querySelector(".exam-sidebar");
 const examLayout = document.querySelector(".exam-layout");
+const examSubmenuToggle = document.getElementById("examSubmenuToggle");
+const examSubmenu = document.getElementById("examSubmenu");
 const actionConfirmModalEl = document.getElementById("actionConfirmModal");
 const actionConfirmModalTitle = document.getElementById("actionConfirmModalTitle");
 const actionConfirmModalDesc = document.getElementById("actionConfirmModalDesc");
@@ -58,6 +60,20 @@ const genTaskFabCount = document.getElementById("genTaskFabCount");
 const genTaskModalBackdrop = document.getElementById("genTaskModalBackdrop");
 const closeGenTaskModalBtn = document.getElementById("closeGenTaskModalBtn");
 const genTaskList = document.getElementById("genTaskList");
+
+function setExamSubmenuOpen(open) {
+    if (!examSubmenuToggle || !examSubmenu) return;
+    examSubmenuToggle.setAttribute("aria-expanded", String(open));
+    examSubmenu.classList.toggle("is-open", open);
+}
+
+if (examSubmenuToggle && examSubmenu) {
+    setExamSubmenuOpen(examSubmenuToggle.getAttribute("aria-expanded") === "true");
+    examSubmenuToggle.addEventListener("click", () => {
+        const expanded = examSubmenuToggle.getAttribute("aria-expanded") === "true";
+        setExamSubmenuOpen(!expanded);
+    });
+}
 
 const GEN_TASKS_STORAGE_KEY = "exam-center-gen-tasks";
 const genTaskMap = new Map();
@@ -3104,6 +3120,10 @@ moduleMenuBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
         const key = btn.getAttribute("data-module");
         const drawerMode = isSidebarDrawerMode();
+        if (!drawerMode) {
+            // 桌面端切换模块时保持组卷二级菜单展开，避免误收起
+            setExamSubmenuOpen(true);
+        }
         console.log("[sidebar] module-menu-btn click", {
             key,
             drawerMode,

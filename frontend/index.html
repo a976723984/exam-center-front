@@ -8,61 +8,36 @@
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="./styles.css">
 </head>
-<body class="bg-body-tertiary">
-<div class="container py-4">
-    <div class="p-4 p-md-5 mb-4 rounded-4 hero shadow-sm position-relative">
-        <div class="d-flex flex-wrap justify-content-between align-items-center w-100 gap-2">
-            <div class="flex-grow-1">
-                <h1 class="display-6 fw-bold mb-2">
-                    <i class="bi bi-mortarboard-fill me-2"></i>小白塔云题库
-                </h1>
-            </div>
-            <div class="user-area-top-right">
-                <a id="userArea" class="btn btn-outline-light btn-sm text-nowrap" href="./login.html">
-                    <i class="bi bi-person-circle me-1"></i><span id="userAreaText">登录/注册</span>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        <div class="col-md-6">
-            <a class="card h-100 border-0 shadow-sm entry-card text-decoration-none text-dark" href="./banks.html">
-                <div class="card-body p-4">
-                    <h5 class="card-title mb-2">
-                        <i class="bi bi-folder-check me-2 text-primary"></i>题库管理
-                    </h5>
-                    <p class="card-text text-secondary mb-0">题库列表、新增、编辑、删除，并支持新增/编辑时上传知识文件。</p>
-                </div>
+<body class="bg-body-tertiary has-mobile-bottom-nav">
+<div class="web-shell">
+    <aside class="web-sidebar">
+        <div class="web-sidebar-brand"><i class="bi bi-mortarboard-fill"></i>小白塔云题库</div>
+        <nav class="web-side-nav">
+            <a class="web-side-link active" href="./index.html"><i class="bi bi-house-door"></i>首页</a>
+            <a class="web-side-link" href="./banks.html"><i class="bi bi-folder-check"></i>题库管理</a>
+            <a class="web-side-link" href="./exam.html"><i class="bi bi-ui-checks-grid"></i>组卷考试</a>
+            <a class="web-side-link" href="./share.html"><i class="bi bi-share-fill"></i>试卷分享区</a>
+        </nav>
+    </aside>
+    <main class="web-main">
+        <header class="web-topbar">
+            <div></div>
+            <a id="userArea" class="web-topbar-user" href="./login.html">
+                <span class="web-topbar-user-avatar"><i class="bi bi-person-fill"></i></span>
+                <span id="userAreaText">登录/注册</span>
             </a>
+        </header>
+        <div class="web-main-body container-fluid py-4">
         </div>
-        <div class="col-md-6">
-            <a class="card h-100 border-0 shadow-sm entry-card text-decoration-none text-dark" href="./exam.html">
-                <div class="card-body p-4">
-                    <h5 class="card-title mb-2">
-                        <i class="bi bi-ui-checks-grid me-2 text-success"></i>组卷与考试
-                    </h5>
-                    <p class="card-text text-secondary mb-0">支持手动组卷、自动组卷、随机考试、自动评分与解析。</p>
-                </div>
-            </a>
-        </div>
-    </div>
-
-    <section class="mt-5">
-        <h2 class="h5 mb-3">
-            <i class="bi bi-share-fill me-2 text-primary"></i>试卷分享区
-        </h2>
-        <p class="text-secondary small mb-3">浏览他人分享的试卷，订阅到自己的题库，并可评分与评价。</p>
-        <div id="publicPapersRow" class="row g-3">
-            <div class="col-12 text-secondary small">加载中...</div>
-        </div>
-        <div class="mt-3">
-            <a class="btn btn-outline-primary btn-sm" href="./share.html">
-                <i class="bi bi-arrow-right-circle me-1"></i>进入试卷分享区
-            </a>
-        </div>
-    </section>
+    </main>
 </div>
+<nav class="mobile-bottom-nav" aria-label="移动端底部导航">
+    <a class="mobile-bottom-nav-link active" href="./index.html"><i class="bi bi-house-door"></i><span>首页</span></a>
+    <a class="mobile-bottom-nav-link" href="./banks.html"><i class="bi bi-folder-check"></i><span>题库管理</span></a>
+    <a class="mobile-bottom-nav-link" href="./exam.html"><i class="bi bi-ui-checks-grid"></i><span>组卷考试</span></a>
+    <a class="mobile-bottom-nav-link" href="./share.html"><i class="bi bi-share-fill"></i><span>分享区</span></a>
+    <a class="mobile-bottom-nav-link" href="./center.html"><i class="bi bi-person-circle"></i><span>个人中心</span></a>
+</nav>
 <script src="./api-client.js" defer></script>
 <script src="./bind-phone-modal.js" defer></script>
 <script src="./index.js" defer></script>
