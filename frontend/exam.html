@@ -108,18 +108,35 @@
                                     </div>
                                 </div>
                                 <div class="question-filter-item">
-                                    <span class="question-filter-label">分类</span>
-                                    <div class="dropdown filter-select-dropdown question-filter-input" id="filterCategoryWrap" data-bs-auto-close="outside">
-                                        <div class="filter-select-trigger d-flex align-items-stretch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" title="选择类型">
-                                            <div class="filter-select-bar flex-grow-1" id="filterCategoryBar">
-                                                <div class="filter-select-tags" id="filterCategoryTags"></div>
-                                                <span class="filter-select-more d-none" id="filterCategoryMore"></span>
+                                    <span class="question-filter-label">知识文件</span>
+                                    <div class="dropdown filter-select-dropdown question-filter-input" id="filterKnowledgeFileWrap" data-bs-auto-close="outside">
+                                        <div class="filter-select-trigger d-flex align-items-stretch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" title="选择知识文件">
+                                            <div class="filter-select-bar flex-grow-1" id="filterKnowledgeFileBar">
+                                                <div class="filter-select-tags" id="filterKnowledgeFileTags"></div>
+                                                <span class="filter-select-more d-none" id="filterKnowledgeFileMore"></span>
                                             </div>
                                             <span class="filter-select-toggle"><i class="bi bi-chevron-down"></i></span>
                                         </div>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" id="filterCategoryMenu" aria-labelledby="filterCategoryBar">
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" id="filterKnowledgeFileMenu" aria-labelledby="filterKnowledgeFileBar">
                                             <li class="px-3 py-2">
-                                                <div id="filterCategory" class="d-flex flex-column gap-1" style="min-width: 160px;"></div>
+                                                <div id="filterKnowledgeFile" class="d-flex flex-column gap-1" style="min-width: 180px;"></div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="question-filter-item d-none" id="filterOutlineItem">
+                                    <span class="question-filter-label">知识大纲</span>
+                                    <div class="dropdown filter-select-dropdown question-filter-input" id="filterOutlineWrap" data-bs-auto-close="outside">
+                                        <div class="filter-select-trigger d-flex align-items-stretch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" title="选择大纲">
+                                            <div class="filter-select-bar flex-grow-1" id="filterOutlineBar">
+                                                <div class="filter-select-tags" id="filterOutlineTags"></div>
+                                                <span class="filter-select-more d-none" id="filterOutlineMore"></span>
+                                            </div>
+                                            <span class="filter-select-toggle"><i class="bi bi-chevron-down"></i></span>
+                                        </div>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" id="filterOutlineMenu" aria-labelledby="filterOutlineBar">
+                                            <li class="px-3 py-2">
+                                                <div id="filterOutline" class="d-flex flex-column gap-1" style="min-width: 180px;"></div>
                                             </li>
                                         </ul>
                                     </div>

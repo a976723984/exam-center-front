@@ -320,8 +320,12 @@ function formatOptionDisplay(option, idx) {
 
 const FILTER_TAG_MAX_DROPDOWN = 3;
 
-// 题目“内容分类/类型”（如：SQL调优、底层原理）选项：优先使用当前题库已存在的分类
+// 题目分类选项（用于自动组卷/考试弹窗）
 let currentQuestionCategoryOptions = [];
+let currentFileCategoryMap = new Map(); // fileName -> full category labels
+let currentOutlineCategoryMap = new Map(); // outline title -> full category labels
+let currentKnowledgeFileOptionMap = new Map(); // fileId(string) -> { id, fileName, baseName }
+let currentOutlineCacheByFileId = new Map(); // fileId(string) -> outline titles
 
 function renderActionConfirmDropdownTags(container) {
     const tagsEl = container.querySelector(".filter-select-tags");
@@ -1235,7 +1239,6 @@ function renderQuestionPool(list) {
         const options = parseOptions(q.optionsJson);
         const badgeClass = q.type === "SINGLE_CHOICE" ? "choice" : q.type === "MULTIPLE_CHOICE" ? "choice" : q.type === "TRUE_FALSE" ? "tf" : "short";
         const stars = difficultyStars(q.difficulty);
-        const categoryLabel = q.category ? escapeHtml(q.category) : "";
         item.innerHTML = `
             <div class="d-flex justify-content-between align-items-start gap-2">
                 <div class="question-row-content">
@@ -1243,7 +1246,6 @@ function renderQuestionPool(list) {
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-shrink-0">
                     ${stars ? `<span class="text-warning small" title="难度">${stars}</span>` : ""}
-                    ${categoryLabel ? `<span class="badge bg-secondary">${categoryLabel}</span>` : ""}
                     <span class="question-badge ${badgeClass}">${typeLabel(q.type)}</span>
                 </div>
             </div>
@@ -1289,8 +1291,14 @@ function getSelectedDifficultyFilter() {
     return Array.from(el.querySelectorAll("input:checked")).map((c) => parseInt(c.value, 10)).filter((n) => !Number.isNaN(n));
 }
 
-function getSelectedCategoryFilter() {
-    const el = document.getElementById("filterCategory");
+function getSelectedKnowledgeFileFilter() {
+    const el = document.getElementById("filterKnowledgeFile");
+    if (!el) return [];
+    return Array.from(el.querySelectorAll("input:checked")).map((c) => String(c.value || "")).filter(Boolean);
+}
+
+function getSelectedOutlineFilter() {
+    const el = document.getElementById("filterOutline");
     if (!el) return [];
     return Array.from(el.querySelectorAll("input:checked")).map((c) => c.value).filter(Boolean);
 }
@@ -1409,12 +1417,50 @@ function getDialogGenTypes() {
     return Array.from(optionsEl.querySelectorAll("input:checked")).map((c) => c.value);
 }
 
-function renderFilterCategoryTags() {
-    const tagsEl = document.getElementById("filterCategoryTags");
-    const moreEl = document.getElementById("filterCategoryMore");
-    const checkboxesEl = document.getElementById("filterCategory");
+function renderFilterKnowledgeFileTags() {
+    const tagsEl = document.getElementById("filterKnowledgeFileTags");
+    const moreEl = document.getElementById("filterKnowledgeFileMore");
+    const checkboxesEl = document.getElementById("filterKnowledgeFile");
     if (!tagsEl || !moreEl || !checkboxesEl) return;
-    const selected = getSelectedCategoryFilter();
+    const selected = getSelectedKnowledgeFileFilter();
+    const items = selected.map((v) => {
+        const opt = currentKnowledgeFileOptionMap.get(String(v));
+        return { value: String(v), label: opt?.baseName || String(v) };
+    });
+    const visible = items.slice(0, FILTER_TAG_MAX);
+    const restCount = items.length - FILTER_TAG_MAX;
+    tagsEl.innerHTML = visible.map((item) => `
+        <span class="filter-select-tag" data-value="${escapeHtml(item.value)}">
+            <span class="filter-select-tag-text">${escapeHtml(item.label)}</span>
+            <button type="button" class="filter-select-tag-close" aria-label="移除">×</button>
+        </span>`).join("");
+    tagsEl.querySelectorAll(".filter-select-tag-close").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const value = btn.closest(".filter-select-tag")?.getAttribute("data-value");
+            const cb = Array.from(checkboxesEl.querySelectorAll("input")).find((inp) => inp.value === value);
+            if (cb) {
+                cb.checked = false;
+                renderFilterKnowledgeFileTags();
+                void renderOutlineFilterBySelectedKnowledgeFiles();
+            }
+        });
+    });
+    if (restCount > 0) {
+        moreEl.textContent = "+" + restCount;
+        moreEl.classList.remove("d-none");
+    } else {
+        moreEl.classList.add("d-none");
+    }
+}
+
+function renderFilterOutlineTags() {
+    const tagsEl = document.getElementById("filterOutlineTags");
+    const moreEl = document.getElementById("filterOutlineMore");
+    const checkboxesEl = document.getElementById("filterOutline");
+    if (!tagsEl || !moreEl || !checkboxesEl) return;
+    const selected = getSelectedOutlineFilter();
     const items = selected.map((v) => ({ value: v, label: v }));
     const visible = items.slice(0, FILTER_TAG_MAX);
     const restCount = items.length - FILTER_TAG_MAX;
@@ -1431,7 +1477,7 @@ function renderFilterCategoryTags() {
             const cb = Array.from(checkboxesEl.querySelectorAll("input")).find((inp) => inp.value === value);
             if (cb) {
                 cb.checked = false;
-                renderFilterCategoryTags();
+                renderFilterOutlineTags();
             }
         });
     });
@@ -1441,6 +1487,123 @@ function renderFilterCategoryTags() {
     } else {
         moreEl.classList.add("d-none");
     }
+}
+
+function parseSourceCategory(category, docBaseNames = []) {
+    const raw = String(category || "").trim();
+    if (!raw) return { fileName: "", outlineTitle: "", full: "" };
+    let matchedFile = "";
+    for (const fileName of docBaseNames) {
+        if (!fileName) continue;
+        if (raw === fileName || raw.startsWith(fileName + "-")) {
+            if (!matchedFile || fileName.length > matchedFile.length) {
+                matchedFile = fileName;
+            }
+        }
+    }
+    if (matchedFile) {
+        const rest = raw === matchedFile ? "" : raw.slice(matchedFile.length + 1).trim();
+        return { fileName: matchedFile, outlineTitle: rest, full: raw };
+    }
+    const splitAt = raw.indexOf("-");
+    if (splitAt <= 0) {
+        return { fileName: raw, outlineTitle: "", full: raw };
+    }
+    return {
+        fileName: raw.slice(0, splitAt).trim(),
+        outlineTitle: raw.slice(splitAt + 1).trim(),
+        full: raw,
+    };
+}
+
+function buildSourceFilterMaps(categories, docBaseNames = []) {
+    const fileMap = new Map();
+    (docBaseNames || []).forEach((name) => {
+        const n = String(name || "").trim();
+        if (!n) return;
+        if (!fileMap.has(n)) fileMap.set(n, []);
+    });
+    for (const category of categories || []) {
+        const parsed = parseSourceCategory(category, docBaseNames);
+        if (!parsed.fileName) continue;
+        if (!fileMap.has(parsed.fileName)) fileMap.set(parsed.fileName, []);
+        fileMap.get(parsed.fileName).push(parsed);
+    }
+    currentFileCategoryMap = new Map();
+    for (const [fileName, list] of fileMap.entries()) {
+        const fulls = Array.from(new Set(list.map((it) => it.full).filter(Boolean)));
+        currentFileCategoryMap.set(fileName, fulls);
+    }
+}
+
+async function loadOutlineTitlesByFileId(bankId, fileId) {
+    const key = String(fileId || "");
+    if (!key) return [];
+    if (currentOutlineCacheByFileId.has(key)) {
+        return currentOutlineCacheByFileId.get(key) || [];
+    }
+    let titles = [];
+    try {
+        const outline = await fetchDocumentOutline(bankId, Number(key));
+        const blocks = Array.isArray(outline?.blocks) ? outline.blocks : [];
+        titles = Array.from(new Set(
+            blocks
+                .map((b) => String(b?.title || "").trim())
+                .filter(Boolean)
+        ));
+    } catch (_) {
+        titles = [];
+    }
+    currentOutlineCacheByFileId.set(key, titles);
+    return titles;
+}
+
+async function renderOutlineFilterBySelectedKnowledgeFiles() {
+    const outlineItem = document.getElementById("filterOutlineItem");
+    const outlineEl = document.getElementById("filterOutline");
+    if (!outlineItem || !outlineEl) return;
+    const bankId = bankSelect?.value;
+    const selectedFileIds = getSelectedKnowledgeFileFilter();
+    const prevSelected = new Set(getSelectedOutlineFilter());
+    const outlineMap = new Map();
+    if (selectedFileIds.length && bankId) {
+        for (const fileId of selectedFileIds) {
+            const fileMeta = currentKnowledgeFileOptionMap.get(String(fileId));
+            const fileBaseName = fileMeta?.baseName || "";
+            const titles = await loadOutlineTitlesByFileId(bankId, fileId);
+            titles.forEach((title) => {
+                const display = fileBaseName ? `${fileBaseName}-${title}` : title;
+                if (!outlineMap.has(display)) outlineMap.set(display, []);
+                const matchedFull = (currentFileCategoryMap.get(fileBaseName) || [])
+                    .filter((full) => full === display || full.endsWith(`-${title}`));
+                const fallbackFull = matchedFull.length ? matchedFull : [display];
+                outlineMap.get(display).push(...fallbackFull);
+            });
+        }
+    }
+    currentOutlineCategoryMap = outlineMap;
+    const outlines = Array.from(outlineMap.keys()).sort((a, b) => a.localeCompare(b, "zh-CN"));
+    if (!outlines.length) {
+        outlineItem.classList.add("d-none");
+        outlineEl.innerHTML = "";
+        const tagsEl = document.getElementById("filterOutlineTags");
+        if (tagsEl) tagsEl.innerHTML = "";
+        const moreEl = document.getElementById("filterOutlineMore");
+        if (moreEl) moreEl.classList.add("d-none");
+        return;
+    }
+    outlineItem.classList.remove("d-none");
+    outlineEl.innerHTML = outlines.map((o, i) => `
+        <label class="form-check filter-option-row mb-0">
+            <input class="form-check-input filter-outline-cb filter-option-cb-hidden" type="checkbox" value="${escapeHtml(o)}" id="fo${i}" ${prevSelected.has(o) ? "checked" : ""}>
+            <span class="small">${escapeHtml(o)}</span>
+        </label>`).join("");
+    outlineEl.querySelectorAll(".filter-outline-cb").forEach((cb) => {
+        cb.addEventListener("change", renderFilterOutlineTags);
+    });
+    const outlineMenu = document.getElementById("filterOutlineMenu");
+    if (outlineMenu) outlineMenu.addEventListener("click", (e) => e.stopPropagation());
+    renderFilterOutlineTags();
 }
 
 function getSelectedQuestionTypeFilter() {
@@ -1488,9 +1651,9 @@ function renderFilterQuestionTypeTags() {
 
 async function loadQuestionFilters(bankId) {
     const diffEl = document.getElementById("filterDifficulty");
-    const catEl = document.getElementById("filterCategory");
+    const fileEl = document.getElementById("filterKnowledgeFile");
     const typeEl = document.getElementById("filterQuestionType");
-    if (!diffEl || !catEl || !typeEl) return;
+    if (!diffEl || !fileEl || !typeEl) return;
     diffEl.innerHTML = [1, 2, 3, 4, 5].map((n) => `
         <label class="form-check filter-option-row mb-0">
             <input class="form-check-input filter-diff-cb filter-option-cb-hidden" type="checkbox" value="${n}" id="fd${n}">
@@ -1505,27 +1668,47 @@ async function loadQuestionFilters(bankId) {
     }
 
     let categories = [];
+    let docs = [];
     if (bankId) {
         try {
             categories = await listQuestionCategories(bankId);
+        } catch (_) {}
+        try {
+            docs = await listDocuments(bankId);
         } catch (_) {}
     }
     currentQuestionCategoryOptions = Array.isArray(categories)
         ? categories.map((c) => String(c || "").trim()).filter(Boolean)
         : [];
-    catEl.innerHTML = categories.length
-        ? categories.map((c, i) => `
+    currentKnowledgeFileOptionMap = new Map();
+    currentOutlineCacheByFileId = new Map();
+    const docOptions = (docs || [])
+        .map((d) => {
+            const id = d?.id != null ? String(d.id) : "";
+            const fileName = String(d?.fileName || "").trim();
+            const baseName = stripFileExtension(fileName);
+            return { id, fileName, baseName };
+        })
+        .filter((d) => d.id && d.baseName);
+    docOptions.forEach((d) => currentKnowledgeFileOptionMap.set(d.id, d));
+    const docBaseNames = docOptions.map((d) => d.baseName);
+    buildSourceFilterMaps(currentQuestionCategoryOptions, docBaseNames);
+    fileEl.innerHTML = docOptions.length
+        ? docOptions.map((d, i) => `
             <label class="form-check filter-option-row mb-0">
-                <input class="form-check-input filter-cat-cb filter-option-cb-hidden" type="checkbox" value="${escapeHtml(c)}" id="fc${i}">
-                <span class="small">${escapeHtml(c)}</span>
+                <input class="form-check-input filter-file-cb filter-option-cb-hidden" type="checkbox" value="${escapeHtml(d.id)}" id="ff${i}">
+                <span class="small">${escapeHtml(d.baseName)}</span>
             </label>`).join("")
-        : '<span class="small text-muted">暂无类型</span>';
-    catEl.querySelectorAll(".filter-cat-cb").forEach((cb) => {
-        cb.addEventListener("change", renderFilterCategoryTags);
+        : '<span class="small text-muted">暂无知识文件</span>';
+    fileEl.querySelectorAll(".filter-file-cb").forEach((cb) => {
+        cb.addEventListener("change", () => {
+            renderFilterKnowledgeFileTags();
+            void renderOutlineFilterBySelectedKnowledgeFiles();
+        });
     });
-    const catMenu = document.getElementById("filterCategoryMenu");
-    if (catMenu) {
-        catMenu.addEventListener("click", (e) => e.stopPropagation());
+    const fileMenu = document.getElementById("filterKnowledgeFileMenu");
+    if (fileMenu) {
+        fileMenu.addEventListener("click", (e) => e.stopPropagation());
     }
 
     typeEl.innerHTML = QUESTION_TYPE_OPTIONS.map((opt, i) => `
@@ -1542,14 +1725,31 @@ async function loadQuestionFilters(bankId) {
     }
 
     renderFilterDifficultyTags();
-    renderFilterCategoryTags();
+    renderFilterKnowledgeFileTags();
+    await renderOutlineFilterBySelectedKnowledgeFiles();
     renderFilterQuestionTypeTags();
 }
 
 async function refreshQuestions(page = currentQuestionPage) {
     const bankId = bankSelect.value;
     const difficulties = getSelectedDifficultyFilter();
-    const categories = getSelectedCategoryFilter();
+    const selectedFiles = getSelectedKnowledgeFileFilter();
+    const selectedOutlines = getSelectedOutlineFilter();
+    let categories = [];
+    if (selectedFiles.length) {
+        if (selectedOutlines.length) {
+            selectedOutlines.forEach((outlineTitle) => {
+                (currentOutlineCategoryMap.get(outlineTitle) || []).forEach((full) => categories.push(full));
+            });
+        } else {
+            selectedFiles.forEach((fileId) => {
+                const fileMeta = currentKnowledgeFileOptionMap.get(String(fileId));
+                const fileName = fileMeta?.baseName || "";
+                (currentFileCategoryMap.get(fileName) || []).forEach((full) => categories.push(full));
+            });
+        }
+    }
+    categories = Array.from(new Set(categories));
     const types = getSelectedQuestionTypeFilter();
     const data = await listQuestionsPaged(bankId, page, questionPageSize, difficulties, categories, types);
     renderQuestionPool(data.items || []);
@@ -2204,8 +2404,10 @@ function getSelectedDialogGenOutlineGuides() {
         if (!guide) return;
         const t = String(guide.title || "").trim();
         const c = String(guide.content || "").trim();
-        if (!t && !c) return;
-        out.push(c ? (t ? `${t}\n${c}` : c) : t);
+        const sourceLabel = sanitizeGuideLabel(String(guide.sourceLabel || ""));
+        if (!t && !c && !sourceLabel) return;
+        const titleLine = sourceLabel || t;
+        out.push(c ? (titleLine ? `${titleLine}\n${c}` : c) : titleLine);
     });
     return out;
 }
@@ -2287,9 +2489,12 @@ async function initDialogGenOutlines(bankId) {
             .map((b) => {
                 const idx = b.index ?? 0;
                 const key = `${docId}:${idx}`;
+                const fileName = doc.fileName || `文档 ${docId}`;
+                const fileBaseName = stripFileExtension(fileName);
                 dialogGenOutlineGuideMap.set(key, {
                     title: b.title || "",
                     content: b.content || "",
+                    sourceLabel: `${fileBaseName}-${(b.title ? String(b.title) : `块 ${idx}`)}`,
                 });
                 const label = b.title ? String(b.title) : `块 ${idx}`;
                 const tooltip = b.content ? String(b.content) : "";
@@ -2337,6 +2542,24 @@ async function initDialogGenOutlines(bankId) {
 
     dialogGenOutlineHint.textContent = "已加载，可按需勾选";
     dialogGenOutlineWrap.innerHTML = docCards.join("");
+}
+
+function stripFileExtension(fileName) {
+    const raw = String(fileName || "").trim();
+    if (!raw) return "未命名知识文件";
+    const idx = raw.lastIndexOf(".");
+    if (idx <= 0) return raw;
+    return raw.slice(0, idx).trim() || raw;
+}
+
+function sanitizeGuideLabel(label) {
+    const raw = String(label || "").trim();
+    if (!raw) return "";
+    return raw
+        .replace(/[\r\n\t]+/g, " ")
+        .replace(/["'`]/g, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
 }
 
 function runGenerateQuestionTask(bankId, count, types, outlineGuides) {
