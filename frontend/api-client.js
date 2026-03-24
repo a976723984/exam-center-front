@@ -51,8 +51,12 @@
     function toLogin(keepPath = true) {
         const isLoginPage = location.pathname.endsWith("/login.html") || location.pathname.endsWith("\\login.html");
         if (isLoginPage) return;
-        const redirect = keepPath ? encodeURIComponent(location.pathname.split(/[\\/]/).pop() || "index.html") : "index.html";
-        location.href = `./login.html?redirect=${redirect}`;
+        const redirect = keepPath ? (location.pathname.split(/[\\/]/).pop() || "index.html") : "index.html";
+        if (window.AuthModal && typeof window.AuthModal.open === "function") {
+            const opened = window.AuthModal.open({ redirect });
+            if (opened) return;
+        }
+        location.href = `./login.html?redirect=${encodeURIComponent(redirect)}`;
     }
 
     function requireAuth() {

@@ -1054,10 +1054,10 @@ button:active, .link-btn:active {
     padding: 0;
     border: none;
     border-radius: 0 14px 14px 0;
-    background: linear-gradient(145deg, #1e40af, #3730a3);
+    background: linear-gradient(145deg, #0e7490, #06b6d4);
     color: #fff;
     font-size: 1.2rem;
-    box-shadow: 2px 0 16px rgba(30, 64, 175, 0.25);
+    box-shadow: 2px 0 16px rgba(14, 116, 144, 0.32);
     cursor: pointer;
     align-items: center;
     justify-content: center;
@@ -1070,11 +1070,11 @@ button:active, .link-btn:active {
 }
 .exam-sidebar-toggle-btn:hover {
     transform: translateY(-50%) translateX(2px);
-    box-shadow: 4px 0 20px rgba(30, 64, 175, 0.35);
-    background: linear-gradient(145deg, #1d4ed8, #4f46e5);
+    box-shadow: 4px 0 20px rgba(8, 145, 178, 0.4);
+    background: linear-gradient(145deg, #0c677f, #0891b2);
 }
 .exam-sidebar-toggle-btn:focus-visible {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid #06b6d4;
     outline-offset: 2px;
 }
 
@@ -1147,11 +1147,11 @@ button:active, .link-btn:active {
     height: 64px;
     border-radius: 999px;
     border: 0;
-    background: #2563eb;
+    background: linear-gradient(145deg, #0e7490, #06b6d4);
     color: #fff;
     font-size: 12px;
     font-weight: 700;
-    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.35);
+    box-shadow: 0 12px 24px rgba(14, 116, 144, 0.32);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1184,9 +1184,9 @@ button:active, .link-btn:active {
     padding: 0;
     border-radius: 999px;
     border: 0;
-    background: #2563eb;
+    background: linear-gradient(145deg, #0e7490, #06b6d4);
     color: #fff;
-    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.35);
+    box-shadow: 0 12px 24px rgba(14, 116, 144, 0.32);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1196,7 +1196,7 @@ button:active, .link-btn:active {
     touch-action: none;
 }
 .add-bank-fab:hover {
-    background: #1d4ed8;
+    background: linear-gradient(145deg, #0c677f, #0891b2);
     color: #fff;
 }
 .add-bank-fab:active {
@@ -1724,6 +1724,17 @@ button:active, .link-btn:active {
     .plan-card {
         min-width: 100%;
     }
+
+    .plan-period-tab .badge-save {
+        display: block;
+        margin-left: 0;
+        margin-top: 0.2rem;
+        width: fit-content;
+    }
+
+    body.page-center .plan-period-tab .badge-save {
+        display: none !important;
+    }
 }
 
 /* 强制绑定手机号全屏层 */
@@ -1940,8 +1951,61 @@ body.phone-bind-open {
         background: #ffffff !important;
     }
 
+    .web-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 1210;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(130deg, #0f3b4a, #0e7490);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 13px 0;
+        min-height: 54px;
+    }
+
+    .web-topbar-back-btn {
+        position: absolute;
+        left: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 30px;
+        height: 30px;
+        border: none;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.18);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        cursor: pointer;
+    }
+
+    .web-topbar-back-btn:active {
+        background: rgba(255, 255, 255, 0.28);
+    }
+
+    .web-topbar-module-title {
+        color: #ffffff;
+        font-size: 0.98rem;
+        font-weight: 700;
+        line-height: 1.2;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    .web-topbar-user,
+    .web-topbar-logo,
+    .web-topbar-user-avatar {
+        display: none !important;
+    }
+
     .web-main {
-        padding: 0 8px !important;
+        padding: 0 !important;
         margin-left: 0 !important;
         width: 100% !important;
     }
@@ -1951,8 +2015,8 @@ body.phone-bind-open {
     }
 
     .web-main-body.container-fluid {
-        padding-left: 6px !important;
-        padding-right: 6px !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
     }
 
     .web-main-body .row {
@@ -1993,6 +2057,16 @@ body.phone-bind-open {
 
     .mobile-bottom-nav-link.active {
         color: #1d4ed8;
+    }
+
+    body.page-exam-mobile #moduleTags {
+        display: none !important;
+    }
+
+    /* 题库管理/分享区/个人中心：卡片左右边距与组卷考试保持一致 */
+    body.page-tight-mobile .web-main-body .row.g-4 > [class*="col-"] {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
 
     /* 移动端：浮动按钮高于底部导航，且尺寸更紧凑 */
@@ -2234,4 +2308,154 @@ body.phone-bind-open {
         margin-top: 8px;
         justify-content: flex-start;
     }
+}
+
+/* ================================
+   全站主题覆盖：青蓝色风格
+   ================================ */
+:root {
+    --bg: #f3fbff;
+    --bg-soft: #e6f7ff;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --primary: #0891b2;
+    --primary-soft: #cffafe;
+    --primary-strong: #0e7490;
+    --accent: #06b6d4;
+    --border: #dbeafe;
+}
+
+body {
+    background:
+        radial-gradient(circle at top right, #dff6ff, transparent 55%),
+        radial-gradient(circle at bottom left, #e0f7ff, transparent 55%),
+        #f6fcff;
+}
+
+.hero,
+.auth-brand-panel {
+    background: linear-gradient(130deg, #0f3b4a, #0e7490);
+    color: #fff;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-strong), var(--accent));
+    border-color: transparent;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0c677f, #0891b2);
+}
+
+.module-menu-btn.active-menu,
+.web-side-link.active,
+.plan-period-tab.active {
+    background: linear-gradient(135deg, #0e7490, #06b6d4);
+    border-color: transparent;
+    color: #fff;
+}
+
+.web-side-link:hover {
+    background: #ecfeff;
+    border-color: #a5f3fc;
+    color: #0e7490;
+}
+
+.mobile-bottom-nav-link.active {
+    color: #0e7490;
+}
+
+/* 登录弹窗 */
+.auth-popup-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.auth-popup-card {
+    width: min(480px, 100%);
+    max-height: 90vh;
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #dbeafe;
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(2, 6, 23, 0.26);
+    padding: 16px;
+}
+
+.auth-popup-card .auth-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* ================================
+   全站按钮交互态统一（最终覆盖）
+   ================================ */
+button,
+.btn,
+.link-btn {
+    transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease !important;
+}
+
+button:hover,
+.btn:hover,
+.link-btn:hover {
+    transform: translateY(-1px);
+}
+
+button:active,
+.btn:active,
+.link-btn:active {
+    transform: translateY(0) scale(0.99);
+}
+
+button:focus-visible,
+.btn:focus-visible,
+.link-btn:focus-visible,
+.module-menu-btn:focus-visible,
+.plan-period-tab:focus-visible {
+    outline: 2px solid #06b6d4 !important;
+    outline-offset: 2px;
+    box-shadow: none !important;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #0e7490, #06b6d4) !important;
+    border-color: transparent !important;
+    box-shadow: 0 10px 22px rgba(14, 116, 144, 0.28) !important;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0c677f, #0891b2) !important;
+    box-shadow: 0 14px 28px rgba(8, 145, 178, 0.34) !important;
+}
+
+.btn-primary:active {
+    box-shadow: 0 6px 14px rgba(8, 145, 178, 0.28) !important;
+}
+
+.btn-outline-primary {
+    color: #0e7490 !important;
+    border-color: rgba(14, 116, 144, 0.7) !important;
+    background: rgba(236, 254, 255, 0.9) !important;
+}
+
+.btn-outline-primary:hover {
+    color: #0c677f !important;
+    border-color: rgba(8, 145, 178, 0.9) !important;
+    background: rgba(207, 250, 254, 0.95) !important;
+}
+
+.module-menu-btn.active-menu,
+.plan-period-tab.active {
+    background: linear-gradient(135deg, #0e7490, #06b6d4) !important;
+    color: #fff !important;
+    border-color: transparent !important;
+    box-shadow: 0 8px 18px rgba(8, 145, 178, 0.3) !important;
 }
