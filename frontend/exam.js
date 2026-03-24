@@ -705,6 +705,17 @@ async function pollGenerateTaskStatus(bankId, taskId) {
     return res.json();
 }
 
+async function cancelGenerateTask(bankId, taskId) {
+    const res = await ApiClient.request(`/banks/${bankId}/questions/generate-tasks/${taskId}/cancel`, {
+        method: "POST",
+    });
+    if (!res.ok) {
+        const msg = await readErrorMessage(res, "中止任务失败");
+        throw new Error(msg);
+    }
+    return res.json();
+}
+
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -744,10 +755,16 @@ function renderGenTasksUI() {
         } else if (task.status === "SUCCESS") {
             statusBadge = '<span class="badge bg-success">已完成</span>';
             statusText = statusText || `已生成 ${task.questionsGenerated ?? 0} 道题目`;
+        } else if (task.status === "CANCELLED") {
+            statusBadge = '<span class="badge bg-secondary">已中止</span>';
+            statusText = statusText || (task.message || "任务已中止");
         } else {
             statusBadge = '<span class="badge bg-danger">失败</span>';
             statusText = statusText || (task.message || "生成失败");
         }
+        const cancelBtnHtml = (task.status === "RUNNING" || task.status === "PENDING")
+            ? `<button class="btn btn-sm btn-outline-danger gen-task-cancel-btn" data-local-id="${escapeHtml(task.localId)}" ${task.cancelling ? "disabled" : ""}>${task.cancelling ? "中止中..." : "中止"}</button>`
+            : "";
         return `
             <div class="upload-task-item">
                 <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
@@ -756,6 +773,7 @@ function renderGenTasksUI() {
                 </div>
                 <div class="small text-secondary">${escapeHtml(statusText)}</div>
                 ${progressBarHtml}
+                <div class="mt-2 d-flex justify-content-end">${cancelBtnHtml}</div>
             </div>
         `;
     }).join("");
@@ -812,6 +830,16 @@ async function monitorGenTask(localId) {
                     saveGenTasksToStorage();
                     renderGenTasksUI();
                 }, 5000);
+                return;
+            }
+            if (t.status === "CANCELLED") {
+                t.statusText = t.message || "任务已中止";
+                renderGenTasksUI();
+                setTimeout(() => {
+                    genTaskMap.delete(localId);
+                    saveGenTasksToStorage();
+                    renderGenTasksUI();
+                }, 3000);
                 return;
             }
             const total = t.count ?? 0;
@@ -2408,6 +2436,31 @@ if (closeGenTaskModalBtn) closeGenTaskModalBtn.addEventListener("click", closeGe
 if (genTaskModalBackdrop) {
     genTaskModalBackdrop.addEventListener("click", (ev) => {
         if (ev.target === genTaskModalBackdrop) closeGenTaskModal();
+    });
+}
+if (genTaskList) {
+    genTaskList.addEventListener("click", async (ev) => {
+        const btn = ev.target && ev.target.closest ? ev.target.closest(".gen-task-cancel-btn") : null;
+        if (!btn) return;
+        const localId = btn.getAttribute("data-local-id");
+        if (!localId) return;
+        const task = genTaskMap.get(localId);
+        if (!task || !task.taskId) return;
+        try {
+            task.cancelling = true;
+            renderGenTasksUI();
+            const data = await cancelGenerateTask(task.bankId, task.taskId);
+            task.status = data?.status || "CANCELLED";
+            task.message = data?.message || "任务已中止";
+            task.statusText = task.message;
+            task.cancelling = false;
+            saveGenTasksToStorage();
+            renderGenTasksUI();
+        } catch (e) {
+            task.cancelling = false;
+            renderGenTasksUI();
+            show(e?.message || "中止任务失败", "danger");
+        }
     });
 }
 
