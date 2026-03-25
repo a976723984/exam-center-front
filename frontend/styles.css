@@ -488,6 +488,21 @@ body {
     border: 0;
 }
 
+/* 下拉选项菜单：限制高度 + 菜单内滚动（移动端可滑） */
+.dropdown-menu {
+    /* 更偏紧凑：随屏幕高度动态变化 */
+    max-height: clamp(180px, 42vh, 300px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 组卷与考试页筛选：菜单更适合长列表 */
+.question-filter-input .dropdown-menu {
+    max-height: clamp(200px, 46vh, 340px);
+}
+
 /* 组卷与考试页：当前页全选 + 翻页按钮，宽度不足时自动换行 */
 .question-page-toolbar {
     flex-wrap: wrap;
