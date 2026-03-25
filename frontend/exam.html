@@ -76,6 +76,28 @@
                     <label class="form-label mb-1">当前题库</label>
                     <select id="bankSelectMobile" class="form-select"></select>
                     <div id="questionUsageHintMobile" class="mt-2 small text-secondary">--</div>
+                    <div id="mobileOperationActions" class="d-none mt-3">
+                        <div class="d-grid gap-2">
+                            <button id="applyQuestionFilterMobile" class="btn btn-outline-secondary" type="button">
+                                <i class="bi bi-search me-1"></i><span>查询</span>
+                            </button>
+                            <button id="genBtnMobile" class="btn btn-primary" type="button">
+                                <i class="bi bi-stars me-1"></i><span>按题库生成题目</span>
+                            </button>
+                            <button id="deleteSelectedBtnMobile" class="btn btn-outline-danger" type="button">
+                                <i class="bi bi-trash3 me-1"></i><span>删除</span>
+                            </button>
+                            <button id="manualPaperBtnMobile" class="btn btn-outline-primary" type="button">
+                                <i class="bi bi-pencil-square me-1"></i><span>手动组卷</span>
+                            </button>
+                            <button id="autoPaperBtnMobile" class="btn btn-outline-primary" type="button">
+                                <i class="bi bi-robot me-1"></i><span>自动组卷</span>
+                            </button>
+                            <button id="startExamBtnMobile" class="btn btn-outline-success" type="button">
+                                <i class="bi bi-play-circle me-1"></i><span>自动考试</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </aside>
@@ -103,9 +125,13 @@
                         <h2 class="h5 mb-3">
                             <i class="bi bi-magic me-2 text-primary"></i>题库与出题
                         </h2>
-                        <div class="mt-3 mb-2" id="questionFiltersRow">
-                            <div class="small text-secondary mb-2">筛选（可多选，不选表示不限制）</div>
-                            <div class="question-filters-grid">
+                        <details class="mobile-filter-drawer mt-2 mb-2" id="questionFiltersRow">
+                            <summary class="mobile-filter-drawer-summary">
+                                <i class="bi bi-funnel me-1"></i>查询条件
+                            </summary>
+                            <div class="mobile-filter-drawer-body mt-2">
+                                <div class="small text-secondary mb-2">筛选（可多选，不选表示不限制）</div>
+                                <div class="question-filters-grid">
                                 <div class="question-filter-item">
                                     <span class="question-filter-label">难度</span>
                                     <div class="dropdown filter-select-dropdown question-filter-input" id="filterDifficultyWrap" data-bs-auto-close="outside">
@@ -175,7 +201,8 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                            </div>
+                        </details>
                         <div class="d-flex flex-wrap gap-2 mt-3">
                             <button id="applyQuestionFilter" class="btn btn-outline-secondary" type="button">
                                 <i class="bi bi-search me-1"></i><span>查询</span>

@@ -18,6 +18,13 @@ const paperNextBtn = document.getElementById("paperNextBtn");
 const paperPageInfo = document.getElementById("paperPageInfo");
 const backPaperListBtn = document.getElementById("backPaperListBtn");
 const startExamBtn = document.getElementById("startExamBtn");
+const applyQuestionFilterMobile = document.getElementById("applyQuestionFilterMobile");
+const genBtnMobile = document.getElementById("genBtnMobile");
+const deleteSelectedBtnMobile = document.getElementById("deleteSelectedBtnMobile");
+const manualPaperBtnMobile = document.getElementById("manualPaperBtnMobile");
+const autoPaperBtnMobile = document.getElementById("autoPaperBtnMobile");
+const startExamBtnMobile = document.getElementById("startExamBtnMobile");
+const mobileOperationActions = document.getElementById("mobileOperationActions");
 const examForm = document.getElementById("examForm");
 const examQuestions = document.getElementById("examQuestions");
 const examResult = document.getElementById("examResult");
@@ -564,6 +571,9 @@ function refreshModulePanels() {
         const key = btn.getAttribute("data-module");
         btn.classList.toggle("active-menu", key === activeModule);
     });
+    if (mobileOperationActions) {
+        mobileOperationActions.classList.toggle("d-none", activeModule !== "operation");
+    }
 }
 
 function activateModule(key) {
@@ -3087,6 +3097,25 @@ if (applyQuestionFilter) {
             show(e.message, "danger");
         }
     });
+}
+
+if (applyQuestionFilterMobile && applyQuestionFilter) {
+    applyQuestionFilterMobile.addEventListener("click", () => applyQuestionFilter.click());
+}
+if (genBtnMobile && genBtn) {
+    genBtnMobile.addEventListener("click", () => genBtn.click());
+}
+if (deleteSelectedBtnMobile && deleteSelectedBtn) {
+    deleteSelectedBtnMobile.addEventListener("click", () => deleteSelectedBtn.click());
+}
+if (manualPaperBtnMobile && manualPaperBtn) {
+    manualPaperBtnMobile.addEventListener("click", () => manualPaperBtn.click());
+}
+if (autoPaperBtnMobile && autoPaperBtn) {
+    autoPaperBtnMobile.addEventListener("click", () => autoPaperBtn.click());
+}
+if (startExamBtnMobile && startExamBtn) {
+    startExamBtnMobile.addEventListener("click", () => startExamBtn.click());
 }
 
 statsBankSelect?.addEventListener("change", async () => {

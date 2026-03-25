@@ -2459,3 +2459,68 @@ button:focus-visible,
     border-color: transparent !important;
     box-shadow: 0 8px 18px rgba(8, 145, 178, 0.3) !important;
 }
+
+/* 查询条件折叠条 */
+.mobile-filter-drawer {
+    border: 1px solid #bae6fd;
+    border-radius: 12px;
+    background: #f0fdff;
+    padding: 8px 10px;
+}
+
+.mobile-filter-drawer-summary {
+    list-style: none;
+    cursor: pointer;
+    color: #0e7490;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+}
+
+.mobile-filter-drawer-summary::-webkit-details-marker {
+    display: none;
+}
+
+@media (min-width: 993px) {
+    .mobile-filter-drawer {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        padding: 0;
+    }
+
+    .mobile-filter-drawer-summary {
+        display: none;
+    }
+
+    .mobile-filter-drawer .mobile-filter-drawer-body {
+        display: block !important;
+    }
+}
+
+@media (max-width: 992px) {
+    body.page-exam-mobile #moduleOperation .card-body > h2.h5 {
+        display: none;
+    }
+
+    body.page-exam-mobile #moduleOperation .mobile-filter-drawer {
+        margin-top: 0 !important;
+    }
+
+    body.page-exam-mobile #moduleOperation .card-body > .d-flex.flex-wrap.gap-2.mt-3 {
+        display: none !important;
+    }
+
+    .mobile-filter-drawer {
+        position: sticky;
+        top: 56px;
+        z-index: 1025;
+        margin-top: 0.25rem !important;
+        margin-bottom: 0.65rem !important;
+        box-shadow: 0 8px 20px rgba(14, 116, 144, 0.16);
+    }
+
+    .mobile-filter-drawer .mobile-filter-drawer-body {
+        padding-top: 6px;
+    }
+}
