@@ -39,12 +39,14 @@ function getPlanFeatures(plan) {
     features.push("题库数量：" + (plan.maxBanks == null ? "不限" : plan.maxBanks + " 个"));
     const storageGb = plan.id === "trial" ? 1 : plan.id === "personal" ? 10 : 20;
     features.push("知识文件容量：" + storageGb + "G");
-    if (plan.maxQuestionsTotal != null) {
-        features.push("题目生成：总量 " + plan.maxQuestionsTotal + " 道");
-    } else if (plan.maxQuestionsPerDay != null) {
-        features.push("题目生成：每日 " + plan.maxQuestionsPerDay + " 道");
+    if (plan.id === "trial") {
+        features.push("白塔币：注册赠送 100（1 题 = 1 币）");
+    } else if (plan.id === "personal") {
+        features.push("白塔币：每月赠送 300（1 题 = 1 币）");
+    } else if (plan.id === "advanced") {
+        features.push("白塔币：每月赠送 800（1 题 = 1 币）");
     } else {
-        features.push("题目生成：不限量");
+        features.push("白塔币：按余额扣减（1 题 = 1 币）");
     }
     return features;
 }
@@ -170,8 +172,9 @@ function closePaymentModal() {
     const usageInfo = document.getElementById("usageInfo");
     const usageStorage = document.getElementById("usageStorage");
     const usageBanks = document.getElementById("usageBanks");
-    const usageQuestions = document.getElementById("usageQuestions");
-    if (usageInfo && usageBanks && usageQuestions && window.PlanConfig && typeof PlanConfig.renderUsageBar === "function") {
+    const usageCoins = document.getElementById("usageCoins");
+    const coinBuyRow = document.getElementById("coinBuyRow");
+    if (usageInfo && usageBanks && usageCoins && window.PlanConfig && typeof PlanConfig.renderUsageBar === "function") {
         let bankCount = 0;
         try {
             const res = await ApiClient.request("/banks");
@@ -179,7 +182,6 @@ function closePaymentModal() {
             bankCount = Array.isArray(banks) ? banks.length : 0;
         } catch (_) {}
         const p = PlanConfig.getCurrentPlan();
-        const qu = PlanConfig.getQuestionGenUsage();
         if (usageStorage) {
             const used = typeof profile.storageUsedBytes === "number" ? profile.storageUsedBytes : 0;
             const limit = typeof profile.storageLimitBytes === "number" ? profile.storageLimitBytes : null;
@@ -188,12 +190,46 @@ function closePaymentModal() {
             usageStorage.innerHTML = PlanConfig.renderUsageBar(usedMB, limitMB, "MB");
         }
         usageBanks.innerHTML = PlanConfig.renderUsageBar(bankCount, p.maxBanks, "个");
-        if (p.maxQuestionsTotal != null) {
-            usageQuestions.innerHTML = PlanConfig.renderUsageBar(qu.total, p.maxQuestionsTotal, "道");
-        } else if (p.maxQuestionsPerDay != null) {
-            usageQuestions.innerHTML = PlanConfig.renderUsageBar(qu.today, p.maxQuestionsPerDay, "道");
-        } else {
-            usageQuestions.innerHTML = PlanConfig.renderUsageBar(qu.total, null, "道");
+        const coins = typeof profile?.user?.baitaCoins === "number"
+            ? profile.user.baitaCoins
+            : (ApiClient.getUser()?.baitaCoins ?? 0);
+        usageCoins.innerHTML = `<div class="usage-progress__text">余额：<strong>${Number(coins) || 0}</strong> 白塔币</div>`;
+        if (coinBuyRow) {
+            const products = [
+                { coins: 50, price: 5 },
+                { coins: 100, price: 8 },
+                { coins: 200, price: 15 },
+                { coins: 500, price: 28 },
+            ];
+            coinBuyRow.innerHTML = products
+                .map((p) => `<button type="button" class="btn btn-sm btn-outline-primary coin-buy-btn" data-coins="${p.coins}" data-price="${p.price}">买 ${p.coins} 币 · ¥${p.price}</button>`)
+                .join("");
+            coinBuyRow.querySelectorAll(".coin-buy-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const c = btn.getAttribute("data-coins");
+                    const pr = btn.getAttribute("data-price");
+                    pendingPlan = { planId: "baita_coin", planName: `购买白塔币：${c} 币（¥${pr}）`, period: "once" };
+                    if (paymentModalPlan) {
+                        paymentModalPlan.textContent = pendingPlan.planName;
+                    }
+                    if (paymentModalTip) {
+                        paymentModalTip.classList.add("d-none");
+                        paymentModalTip.textContent = "";
+                    }
+                    if (!groupQrUrl) {
+                        if (paymentModalTip) {
+                            paymentModalTip.textContent = "暂未配置收款二维码，请联系管理员。";
+                            paymentModalTip.classList.remove("d-none");
+                        } else {
+                            alert("暂未配置收款二维码，请联系管理员。");
+                        }
+                    } else if (groupQrImage) {
+                        groupQrImage.src = groupQrUrl;
+                        groupQrImage.style.display = "inline-block";
+                    }
+                    if (paymentModalBackdrop) paymentModalBackdrop.classList.remove("d-none");
+                });
+            });
         }
         usageInfo.classList.remove("d-none");
     }
@@ -219,10 +255,6 @@ function closePaymentModal() {
 })();
 
 logoutBtn?.addEventListener("click", () => {
-    const uid = ApiClient.getUser()?.id ?? null;
-    if (window.PlanConfig?.clearQuestionGenUsageForUser) {
-        PlanConfig.clearQuestionGenUsageForUser(uid);
-    }
     ApiClient.clearSession();
     location.href = "./login.html";
 });

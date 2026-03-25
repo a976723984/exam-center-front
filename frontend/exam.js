@@ -834,9 +834,9 @@ async function monitorGenTask(localId) {
             t.message = data?.message ?? t.message;
             if (t.status === "SUCCESS") {
                 const generated = t.questionsGenerated ?? 0;
-                if (generated > 0 && window.PlanConfig && typeof PlanConfig.addQuestionGenUsage === "function") {
-                    PlanConfig.addQuestionGenUsage(generated);
-                }
+                try {
+                    await ApiClient.validateMe();
+                } catch (_) {}
                 updateQuestionUsageHint();
                 t.statusText = `已生成 ${generated} 道题目`;
                 renderGenTasksUI();
@@ -909,18 +909,14 @@ async function monitorGenTask(localId) {
 
 function updateQuestionUsageHint() {
     const el = document.getElementById("questionUsageHint");
-    if (!el || !window.PlanConfig || typeof PlanConfig.renderUsageBar !== "function") return;
-    const plan = PlanConfig.getCurrentPlan();
-    const usage = PlanConfig.getQuestionGenUsage();
-    var label = "";
-    var html;
-    if (plan.maxQuestionsTotal != null) {
-        html = "<span class=\"small text-secondary mb-1 d-block\">总量</span>" + PlanConfig.renderUsageBar(usage.total, plan.maxQuestionsTotal, "道");
-    } else if (plan.maxQuestionsPerDay != null) {
-        html = "<span class=\"small text-secondary mb-1 d-block\">今日</span>" + PlanConfig.renderUsageBar(usage.today, plan.maxQuestionsPerDay, "道");
-    } else {
-        html = PlanConfig.renderUsageBar(usage.total, null, "道");
-    }
+    if (!el) return;
+    const coins = Number(window.ApiClient?.getUser?.()?.baitaCoins ?? 0);
+    const safeCoins = Number.isFinite(coins) ? coins : 0;
+    const html = `
+        <span class="small text-secondary mb-1 d-block">白塔币</span>
+        <div class="usage-progress__text">余额：${safeCoins}（1 题 = 1 币）</div>
+        <a class="small text-primary" href="./center.html" style="text-decoration:none;">去个人中心购买/查看赠送</a>
+    `;
     el.innerHTML = html;
     var elMobile = document.getElementById("questionUsageHintMobile");
     if (elMobile) elMobile.innerHTML = html;
@@ -2666,13 +2662,6 @@ document.getElementById("generateQuestionModalConfirm")?.addEventListener("click
     if (count < 1 || count > 50) {
         show("生成数量须在 1～50 之间", "danger");
         return;
-    }
-    if (window.PlanConfig) {
-        const check = PlanConfig.checkCanGenerateQuestions(count);
-        if (!check.ok) {
-            show(check.message, "danger");
-            return;
-        }
     }
     bootstrap.Modal.getInstance(document.getElementById("generateQuestionModal"))?.hide();
     await runWithButtonLoading(genBtn, async () => {

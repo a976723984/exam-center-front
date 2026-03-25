@@ -78,9 +78,6 @@
                     <div id="questionUsageHintMobile" class="mt-2 small text-secondary">--</div>
                     <div id="mobileOperationActions" class="d-none mt-3">
                         <div class="d-grid gap-2">
-                            <button id="applyQuestionFilterMobile" class="btn btn-outline-secondary" type="button">
-                                <i class="bi bi-search me-1"></i><span>查询</span>
-                            </button>
                             <button id="genBtnMobile" class="btn btn-primary" type="button">
                                 <i class="bi bi-stars me-1"></i><span>按题库生成题目</span>
                             </button>
@@ -201,6 +198,12 @@
                                     </div>
                                 </div>
                             </div>
+                            </div>
+                            <!-- 移动端：将“查询”按钮放到查询条件内部底部 -->
+                            <div class="d-grid gap-2 mt-2 d-md-none">
+                                <button id="applyQuestionFilterMobile" class="btn btn-outline-secondary" type="button">
+                                    <i class="bi bi-search me-1"></i><span>查询</span>
+                                </button>
                             </div>
                         </details>
                         <div class="d-flex flex-wrap gap-2 mt-3">

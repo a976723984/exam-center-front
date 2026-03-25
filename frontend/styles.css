@@ -760,6 +760,10 @@ button:active, .link-btn:active {
     gap: 10px;
 }
 
+.doc-body {
+    min-width: 0;
+}
+
 .doc-card {
     border: 1px solid #e2e8f0;
     border-radius: 10px;
@@ -807,6 +811,98 @@ button:active, .link-btn:active {
     font-size: 12px;
     color: #64748b;
 }
+
+/* ================================
+   题库管理（移动端）：知识文件卡片横向展示
+   - 左侧封面固定尺寸
+   - 右侧信息自适应，按钮不挤压文件名
+   ================================ */
+@media (max-width: 992px) {
+    .doc-grid {
+        /* 移动端：两行横向滑动展示（不强制分列换行） */
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        grid-auto-flow: column;
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+        /* 覆盖默认的 grid-template-columns，确保每一列宽度一致 */
+        grid-template-columns: unset;
+        /* 列宽按屏幕比例自适应，露出下一列一角，且每列一致 */
+        grid-auto-columns: 86%;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        padding-bottom: 6px;
+    }
+
+    /* 防止知识文件横向内容把页面整体撑出横向滚动 */
+    .bank-row {
+        overflow-x: hidden;
+    }
+
+    .doc-card {
+        display: flex;
+        align-items: stretch;
+        gap: 10px;
+        padding: 10px;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .doc-cover {
+        flex: 0 0 92px;
+        width: 92px;
+        height: 68px;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #f1f5f9;
+    }
+
+    .doc-cover img {
+        border-radius: 10px;
+    }
+
+    .doc-body {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .doc-name {
+        padding: 0;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.25;
+        margin-bottom: 2px;
+    }
+
+    .doc-status {
+        padding: 0;
+        font-size: 12px;
+        line-height: 1.2;
+        margin-bottom: 6px;
+    }
+
+    .doc-meta {
+        padding: 0;
+    }
+
+    .doc-meta .btn {
+        white-space: nowrap;
+    }
+}
+
+/* 平板/大屏手机：每列更窄，保证能露出更多列 */
+@media (min-width: 576px) and (max-width: 992px) {
+    .doc-grid {
+        grid-auto-columns: 56%;
+    }
+}
+
 
 .result-summary {
     background: #eff6ff;
@@ -1719,10 +1815,21 @@ button:active, .link-btn:active {
 
 @media (max-width: 767px) {
     .plan-cards-row {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 12px;
+        padding-bottom: 6px;
+    }
+    .plan-cards-row > [class*="col-"] {
+        flex: 0 0 auto;
+        width: 82vw;
+        max-width: 360px;
     }
     .plan-card {
-        min-width: 100%;
+        min-width: 0;
+        height: 100%;
     }
 
     .plan-period-tab .badge-save {
@@ -2473,8 +2580,11 @@ button:focus-visible,
     cursor: pointer;
     color: #0e7490;
     font-weight: 700;
-    display: inline-flex;
+    /* 让 summary 占满整行，整行都可点击展开/收起 */
+    display: flex;
     align-items: center;
+    width: 100%;
+    padding: 6px 4px;
 }
 
 .mobile-filter-drawer-summary::-webkit-details-marker {

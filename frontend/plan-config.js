@@ -9,41 +9,32 @@
             id: "trial",
             name: "试用版",
             maxBanks: 1,
-            maxQuestionsTotal: 100,
-            maxQuestionsPerDay: null,
             priceMonthly: 0,
             priceQuarterly: 0,
             priceYearly: 0,
-            desc: "免费，限 1 个题库、题目生成总量 100 道",
+            desc: "免费，限 1 个题库；注册赠送 100 白塔币（1 题 = 1 币）",
         },
         personal: {
             id: "personal",
             name: "个人版",
             maxBanks: 20,
-            maxQuestionsTotal: null,
-            maxQuestionsPerDay: 500,
             priceMonthly: 10,
             priceQuarterly: Math.round(10 * 3 * (1 - 0.15)),
             priceYearly: Math.round(10 * 12 * (1 - 0.35)),
-            desc: "20 个题库，每日题目生成 500 道，知识文件容量 10G",
+            desc: "20 个题库，知识文件容量 10G；每月赠送 300 白塔币（1 题 = 1 币）",
         },
         advanced: {
             id: "advanced",
             name: "高级版",
             maxBanks: null,
-            maxQuestionsTotal: null,
-            maxQuestionsPerDay: null,
             priceMonthly: 15,
             priceQuarterly: Math.round(15 * 3 * (1 - 0.15)),
             priceYearly: Math.round(15 * 12 * (1 - 0.35)),
-            desc: "题库不限量，题目生成不限量，知识文件容量 20G",
+            desc: "题库不限量，知识文件容量 20G；每月赠送 800 白塔币（1 题 = 1 币）",
         },
     };
 
     const PLAN_STORAGE_KEY = "exam_center_plan";
-    const USAGE_TOTAL_KEY = "exam_center_plan_usage_total";
-    const USAGE_DATE_KEY = "exam_center_plan_usage_date";
-    const USAGE_TODAY_KEY = "exam_center_plan_usage_today";
 
     function currentUserScope() {
         try {
@@ -72,51 +63,6 @@
 
     function getCurrentPlan() {
         return getPlan(getCurrentPlanId());
-    }
-
-    function getQuestionGenUsage() {
-        const today = new Date().toISOString().slice(0, 10);
-        const savedDate = localStorage.getItem(scopedKey(USAGE_DATE_KEY));
-        const total = parseInt(localStorage.getItem(scopedKey(USAGE_TOTAL_KEY)) || "0", 10);
-        let dayCount = parseInt(localStorage.getItem(scopedKey(USAGE_TODAY_KEY)) || "0", 10);
-        if (savedDate !== today) {
-            dayCount = 0;
-            localStorage.setItem(scopedKey(USAGE_DATE_KEY), today);
-            localStorage.setItem(scopedKey(USAGE_TODAY_KEY), "0");
-        }
-        return { total, today: dayCount };
-    }
-
-    function addQuestionGenUsage(count) {
-        const u = getQuestionGenUsage();
-        const today = new Date().toISOString().slice(0, 10);
-        localStorage.setItem(scopedKey(USAGE_TOTAL_KEY), String(u.total + count));
-        localStorage.setItem(scopedKey(USAGE_TODAY_KEY), String(u.today + count));
-        localStorage.setItem(scopedKey(USAGE_DATE_KEY), today);
-    }
-
-    function clearQuestionGenUsageForUser(userId) {
-        const scope = userId != null ? String(userId) : "anon";
-        const suffix = "__u" + scope;
-        localStorage.removeItem(USAGE_TOTAL_KEY + suffix);
-        localStorage.removeItem(USAGE_TODAY_KEY + suffix);
-        localStorage.removeItem(USAGE_DATE_KEY + suffix);
-    }
-
-    function checkCanGenerateQuestions(count) {
-        const plan = getCurrentPlan();
-        const usage = getQuestionGenUsage();
-        if (plan.maxQuestionsTotal != null) {
-            if (usage.total + count > plan.maxQuestionsTotal) {
-                return { ok: false, message: "试用版题目生成总量限制为 " + plan.maxQuestionsTotal + " 道，当前已用 " + usage.total + " 道，无法再生成。" };
-            }
-        }
-        if (plan.maxQuestionsPerDay != null) {
-            if (usage.today + count > plan.maxQuestionsPerDay) {
-                return { ok: false, message: "个人版每日题目生成限制为 " + plan.maxQuestionsPerDay + " 道，今日已用 " + usage.today + " 道，无法再生成。" };
-            }
-        }
-        return { ok: true };
     }
 
     /** 用量进度条颜色：未满一半绿，一半以上黄，满或超红 */
@@ -153,10 +99,6 @@
         setCurrentPlanId,
         getPlan,
         getCurrentPlan,
-        getQuestionGenUsage,
-        addQuestionGenUsage,
-        clearQuestionGenUsageForUser,
-        checkCanGenerateQuestions,
         getUsageBarColor,
         renderUsageBar,
     };

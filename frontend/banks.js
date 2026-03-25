@@ -1151,15 +1151,18 @@ function renderDocumentsGrid(bankId, docs, coverUrl) {
                     ? `<div class="doc-cover"><img src="${coverUrl}" alt="cover"></div>`
                     : `<div class="doc-cover doc-cover-fallback">FILE</div>`;
                 const cardClass = "doc-card doc-card--outlineable";
+                const safeName = escapeHtml(doc.fileName);
                 return `
                     <div class="${cardClass}" data-outline-bank="${bankId}" data-outline-doc="${doc.id}">
                         ${cover}
-                        <div class="doc-name" title="${escapeHtml(doc.fileName)}">${escapeHtml(doc.fileName)}</div>
-                        <div class="doc-status">${escapeHtml(formatDocStatus(doc.status, doc.parseStatus))}</div>
-                        <div class="doc-meta d-flex justify-content-end align-items-center gap-2">
-                            <div class="d-flex gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" data-doc-outline-parse="${bankId}-${doc.id}">大纲解析</button>
-                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-doc-del="${bankId}-${doc.id}">删 除</button>
+                        <div class="doc-body">
+                            <div class="doc-name" title="${safeName}">${safeName}</div>
+                            <div class="doc-status">${escapeHtml(formatDocStatus(doc.status, doc.parseStatus))}</div>
+                            <div class="doc-meta d-flex justify-content-end align-items-center gap-2">
+                                <div class="d-flex gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" data-doc-outline-parse="${bankId}-${doc.id}">大纲解析</button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-doc-del="${bankId}-${doc.id}">删 除</button>
+                                </div>
                             </div>
                         </div>
                     </div>
