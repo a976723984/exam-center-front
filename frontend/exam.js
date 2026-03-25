@@ -1107,6 +1107,27 @@ async function getExamStats(bankId, paperId) {
 }
 
 let statsCharts = { examCount: null, wrongCount: null, score: null };
+let chartJsLoadPromise = null;
+
+function ensureChartJsLoaded() {
+    if (window.Chart) return Promise.resolve(true);
+    if (chartJsLoadPromise) return chartJsLoadPromise;
+    chartJsLoadPromise = new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-chartjs="1"]');
+        if (existing && window.Chart) {
+            resolve(true);
+            return;
+        }
+        const s = document.createElement("script");
+        s.src = "https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.1/chart.umd.min.js";
+        s.defer = true;
+        s.setAttribute("data-chartjs", "1");
+        s.onload = () => resolve(true);
+        s.onerror = () => reject(new Error("Chart.js 加载失败"));
+        document.head.appendChild(s);
+    });
+    return chartJsLoadPromise;
+}
 
 function destroyStatsCharts() {
     ["chartExamCount", "chartWrongCount", "chartScore"].forEach((id) => {
@@ -1218,6 +1239,8 @@ async function loadStatsAndCharts() {
     const paperId = statsPaperSelect?.value || null;
     try {
         if (statsSummary) statsSummary.innerHTML = "加载中...";
+        // Chart.js 体积较大：仅在进入统计模块/触发统计查询时再加载，避免拖慢首屏与接口调用
+        await ensureChartJsLoaded().catch(() => null);
         const stats = await getExamStats(bankId, paperId || undefined);
         renderStatsSummary(stats);
         renderStatsCharts(stats);
