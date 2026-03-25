@@ -27,6 +27,10 @@
     const pageSize = 12;
     let currentPaperId = null;
     let isLoggedIn = false;
+    let listLoading = false;
+    let mobileInfiniteBound = false;
+    let mobileListItems = [];
+    let mobileLoadingEl = null;
 
     function escapeHtml(text) {
         if (text == null) return "";
@@ -34,6 +38,10 @@
     }
 
     const typeLabel = { SINGLE_CHOICE: "单选题", MULTIPLE_CHOICE: "多选题", SHORT_ANSWER: "简答题", TRUE_FALSE: "判断题" };
+
+    function isMobileLike() {
+        return !!window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+    }
 
     function parseOptions(json) {
         try { return json ? JSON.parse(json) : []; } catch { return []; }
@@ -47,15 +55,7 @@
         return res;
     }
 
-    async function loadList(page = 1) {
-        const res = await requestPublic(`/papers/public?page=${page}&size=${pageSize}`);
-        const data = await res.json();
-        const items = data.items || [];
-        currentPage = data.page || page;
-        totalPages = data.totalPages || 1;
-        listPageInfo.textContent = `第 ${currentPage} / ${totalPages} 页，共 ${data.totalElements ?? 0} 份`;
-        listPrevBtn.disabled = currentPage <= 1;
-        listNextBtn.disabled = currentPage >= totalPages;
+    function renderListCards(items) {
         if (!items.length) {
             publicList.innerHTML = '<div class="col-12 text-secondary small">暂无分享的试卷</div>';
             return;
@@ -83,11 +83,81 @@
         });
     }
 
+    function updateListPagerText(totalElements = null) {
+        if (!listPageInfo) return;
+        const totalText = totalElements != null ? `，共 ${totalElements} 份` : "";
+        if (isMobileLike()) {
+            listPageInfo.textContent = "";
+            listPageInfo.classList.add("d-none");
+            if (listPrevBtn) listPrevBtn.classList.add("d-none");
+            if (listNextBtn) listNextBtn.classList.add("d-none");
+        } else {
+            listPageInfo.textContent = `第 ${currentPage} / ${totalPages} 页${totalText}`;
+            listPageInfo.classList.remove("d-none");
+            if (listPrevBtn) listPrevBtn.classList.remove("d-none");
+            if (listNextBtn) listNextBtn.classList.remove("d-none");
+        }
+    }
+
+    function ensureMobileLoadingEl() {
+        if (mobileLoadingEl) return mobileLoadingEl;
+        mobileLoadingEl = document.createElement("div");
+        mobileLoadingEl.id = "publicListMobileLoading";
+        mobileLoadingEl.className = "d-none text-center text-secondary small py-3";
+        mobileLoadingEl.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div><div class="mt-2">加载中...</div>';
+        publicList?.insertAdjacentElement("afterend", mobileLoadingEl);
+        return mobileLoadingEl;
+    }
+
+    function setMobileLoadingVisible(visible) {
+        if (!isMobileLike()) return;
+        const el = ensureMobileLoadingEl();
+        if (!el) return;
+        el.classList.toggle("d-none", !visible);
+    }
+
+    async function loadList(page = 1, { append = false } = {}) {
+        if (listLoading) return;
+        listLoading = true;
+        setMobileLoadingVisible(isMobileLike());
+        try {
+            const res = await requestPublic(`/papers/public?page=${page}&size=${pageSize}`);
+            const data = await res.json();
+            const items = Array.isArray(data.items) ? data.items : [];
+            currentPage = data.page || page;
+            totalPages = data.totalPages || 1;
+            const totalElements = data.totalElements ?? null;
+
+            listPrevBtn.disabled = currentPage <= 1;
+            listNextBtn.disabled = currentPage >= totalPages;
+
+            if (isMobileLike()) {
+                if (!append) mobileListItems = [];
+                mobileListItems = mobileListItems.concat(items);
+                renderListCards(mobileListItems);
+                updateListPagerText(totalElements);
+            } else {
+                renderListCards(items);
+                updateListPagerText(totalElements);
+            }
+        } finally {
+            listLoading = false;
+            setMobileLoadingVisible(false);
+        }
+    }
+
     function showList() {
         listSection.classList.remove("d-none");
         detailSection.classList.add("d-none");
         currentPaperId = null;
-        loadList(currentPage);
+        if (isMobileLike()) {
+            currentPage = 1;
+            mobileListItems = [];
+            loadList(1, { append: false });
+            bindMobileInfiniteScroll();
+        } else {
+            loadList(currentPage);
+        }
     }
 
     async function showDetail(paperId) {
@@ -176,6 +246,52 @@
     }
 
     backToListBtn?.addEventListener("click", showList);
+
+    listPrevBtn?.addEventListener("click", () => {
+        if (isMobileLike()) return;
+        if (currentPage <= 1) return;
+        void loadList(currentPage - 1, { append: false });
+    });
+
+    listNextBtn?.addEventListener("click", () => {
+        if (isMobileLike()) return;
+        if (currentPage >= totalPages) return;
+        void loadList(currentPage + 1, { append: false });
+    });
+
+    function bindMobileInfiniteScroll() {
+        if (mobileInfiniteBound || !publicList) return;
+        mobileInfiniteBound = true;
+        const sentinel = document.createElement("div");
+        sentinel.id = "publicListInfiniteSentinel";
+        sentinel.style.height = "1px";
+        sentinel.style.width = "100%";
+        publicList.insertAdjacentElement("afterend", sentinel);
+        ensureMobileLoadingEl();
+
+        const tryLoadNext = async () => {
+            if (!isMobileLike()) return;
+            if (listSection.classList.contains("d-none")) return;
+            if (listLoading) return;
+            if (currentPage >= totalPages) return;
+            await loadList(currentPage + 1, { append: true });
+        };
+
+        if ("IntersectionObserver" in window) {
+            const io = new IntersectionObserver((entries) => {
+                entries.forEach((e) => {
+                    if (e.isIntersecting) void tryLoadNext();
+                });
+            }, { root: null, rootMargin: "120px 0px 240px 0px", threshold: 0 });
+            io.observe(sentinel);
+            return;
+        }
+
+        window.addEventListener("scroll", () => {
+            const nearBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 300);
+            if (nearBottom) void tryLoadNext();
+        }, { passive: true });
+    }
 
     subscribeBtn.addEventListener("click", async () => {
         const bankId = subscribeBankSelect.value;

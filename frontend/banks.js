@@ -25,6 +25,9 @@ let uploadTaskSeed = 0;
 let loadingMaskCount = 0;
 let currentBankPage = 1;
 const bankPageSize = 5;
+let banksCache = [];
+let bankDocsMapCache = new Map();
+let bankInfiniteBound = false;
 
 const OUTLINE_TASK_STORAGE_KEY_PREFIX = "exam-center-outline-tasks-v1";
 
@@ -608,6 +611,50 @@ function isDocumentOutlineReady(doc) {
         || ps === "INDEX_BUILD_SUCCESS";
 }
 
+function isMobileLike() {
+    return !!window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+}
+
+function ensureBankInfiniteSentinel() {
+    let el = document.getElementById("bankInfiniteSentinel");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "bankInfiniteSentinel";
+    el.style.height = "1px";
+    el.style.width = "100%";
+    bankList.insertAdjacentElement("afterend", el);
+    return el;
+}
+
+function bindMobileBankInfiniteScroll() {
+    if (bankInfiniteBound) return;
+    bankInfiniteBound = true;
+    const sentinel = ensureBankInfiniteSentinel();
+
+    const tryLoadNext = () => {
+        if (!isMobileLike()) return;
+        const totalPages = Math.max(1, Math.ceil((banksCache || []).length / bankPageSize));
+        if (currentBankPage >= totalPages) return;
+        currentBankPage += 1;
+        render(banksCache, bankDocsMapCache);
+    };
+
+    if ("IntersectionObserver" in window) {
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((e) => {
+                if (e.isIntersecting) tryLoadNext();
+            });
+        }, { root: null, rootMargin: "120px 0px 240px 0px", threshold: 0 });
+        io.observe(sentinel);
+        return;
+    }
+
+    window.addEventListener("scroll", () => {
+        const nearBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 300);
+        if (nearBottom) tryLoadNext();
+    }, { passive: true });
+}
+
 const outlineModalBackdrop = document.getElementById("outlineModalBackdrop");
 const closeOutlineModalBtn = document.getElementById("closeOutlineModalBtn");
 const outlineDocList = document.getElementById("outlineDocList");
@@ -637,6 +684,10 @@ const outlineState = {
     useTaskForDocPage: new Map(),
     outlineTaskIdByDocId: new Map(),
     outlineTaskPromiseByDocId: new Map(),
+    infinite: false,
+    infiniteBlocks: [],
+    infiniteLoading: false,
+    infiniteLoadingEl: null,
 };
 
 async function fetchDocumentOutline(bankId, documentId, page, size) {
@@ -771,10 +822,13 @@ function openOutlineModal(bankId, documents, preferredDocId, options = {}) {
     outlineState.docClickOnly = !!options.docClickOnly;
     outlineState.bankId = bankId;
     outlineState.documents = documents || [];
-    outlineState.size = 1;
+    outlineState.infinite = isMobileLike();
+    outlineState.size = outlineState.infinite ? 20 : 1;
     outlineState.page = 1;
     outlineState.totalBlocks = 0;
     outlineState.extractMode = "";
+    outlineState.infiniteBlocks = [];
+    outlineState.infiniteLoading = false;
     outlineState.openMode = restart ? "restart" : "view";
 
     // 用于避免旧的异步轮询结果覆盖新选择
@@ -791,7 +845,7 @@ function openOutlineModal(bankId, documents, preferredDocId, options = {}) {
     outlineState.selectedDocId = pick;
 
     const navRow = document.getElementById("outlineNavRow");
-    if (navRow) navRow.classList.toggle("d-none", outlineState.docClickOnly);
+    if (navRow) navRow.classList.toggle("d-none", outlineState.docClickOnly || outlineState.infinite);
 
     if (outlineDocList) {
         outlineDocList.classList.toggle("d-none", outlineState.documents.length <= 1);
@@ -859,6 +913,44 @@ async function loadOutlinePageIntoModal() {
                 ? "尚未生成大纲（仅展示已保存结果）"
                 : `提取方式：${modeLabel} · 共 ${outlineState.totalBlocks} 个内容块`;
 
+        const total = outlineState.totalBlocks;
+        const page = outlineState.page;
+        const totalPages = Math.max(1, Math.ceil(total / outlineState.size));
+
+        if (outlineState.infinite) {
+            if (page <= 1) outlineState.infiniteBlocks = [];
+            outlineState.infiniteBlocks = outlineState.infiniteBlocks.concat(blocks || []);
+
+            if (modeUpper === "EMPTY" || (total === 0 && outlineState.infiniteBlocks.length === 0)) {
+                outlineContent.classList.add("outline-content-box--grid");
+                outlineContent.innerHTML =
+                    '<div class="outline-empty-hint text-secondary small text-center py-4">暂无大纲内容</div>';
+            } else if (!outlineState.infiniteBlocks.length) {
+                outlineContent.classList.add("outline-content-box--grid");
+                outlineContent.innerHTML =
+                    '<div class="outline-empty-hint text-secondary small text-center py-4">暂无大纲内容</div>';
+            } else {
+                outlineContent.classList.add("outline-content-box--grid");
+                const cards = outlineState.infiniteBlocks
+                    .map(
+                        (b) => `
+                <div class="outline-block-card">
+                    <div class="outline-block-card__title">${escapeHtml(b.title || "（未命名）")}</div>
+                    <div class="outline-block-card__body">${escapeHtml(b.content || "")}</div>
+                </div>`,
+                    )
+                    .join("");
+                outlineContent.innerHTML = `<div class="outline-block-grid">${cards}</div>`;
+            }
+
+            outlinePageLabel.textContent = total
+                ? `已加载 ${outlineState.infiniteBlocks.length} / ${total} 块`
+                : "";
+            if (outlinePrevBtn) outlinePrevBtn.disabled = true;
+            if (outlineNextBtn) outlineNextBtn.disabled = true;
+            return;
+        }
+
         if (modeUpper === "EMPTY" || (outlineState.totalBlocks === 0 && !blocks.length)) {
             outlineContent.classList.add("outline-content-box--grid");
             outlineContent.innerHTML =
@@ -881,9 +973,6 @@ async function loadOutlinePageIntoModal() {
             outlineContent.innerHTML = `<div class="outline-block-grid">${cards}</div>`;
         }
 
-        const total = outlineState.totalBlocks;
-        const page = outlineState.page;
-        const totalPages = Math.max(1, Math.ceil(total / outlineState.size));
         outlinePageLabel.textContent = total
             ? `第 ${page} / ${totalPages} 页（每页 ${outlineState.size} 块）`
             : "";
@@ -953,7 +1042,7 @@ async function loadOutlinePageIntoModal() {
                     renderOutlinePageResponse(syncData);
                     outlineState.useTaskForDocPage.set(taskKey, false);
                     hideOutlineParseProgress();
-                    setOutlineNavDisabled(false);
+                    setOutlineNavDisabled(!outlineState.infinite);
                     return;
                 }
             } catch (syncErr) {
@@ -1018,7 +1107,7 @@ async function loadOutlinePageIntoModal() {
             outlineState.outlineTaskIdByDocId.set(taskKey, resolvedTaskId);
             persistOutlineTaskId(bankId, docId, resolvedTaskId);
             outlineState.openMode = "view";
-            setOutlineNavDisabled(false);
+            setOutlineNavDisabled(!outlineState.infinite);
             return;
         }
 
@@ -1071,7 +1160,7 @@ async function loadOutlinePageIntoModal() {
         renderOutlinePageResponse(pageData);
         outlineState.useTaskForDocPage.set(taskKey, true);
         outlineState.openMode = "view";
-        setOutlineNavDisabled(false);
+        setOutlineNavDisabled(!outlineState.infinite);
     } catch (err) {
         console.error("[outline] render failed", {
             bankId,
@@ -1095,6 +1184,37 @@ async function loadOutlinePageIntoModal() {
         outlineMeta.textContent = "";
         if (outlinePageLabel) outlinePageLabel.textContent = "";
     }
+}
+
+function bindOutlineInfiniteScroll() {
+    if (!outlineContent || outlineContent.dataset.infiniteBound === "1") return;
+    outlineContent.dataset.infiniteBound = "1";
+    if (!outlineState.infiniteLoadingEl) {
+        const el = document.createElement("div");
+        el.id = "outlineInfiniteLoading";
+        el.className = "d-none text-center text-secondary small py-2";
+        el.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div><div class="mt-1">加载中...</div>';
+        outlineContent.insertAdjacentElement("afterend", el);
+        outlineState.infiniteLoadingEl = el;
+    }
+    outlineContent.addEventListener("scroll", async () => {
+        if (!outlineState.infinite) return;
+        if (outlineState.infiniteLoading) return;
+        const total = outlineState.totalBlocks || 0;
+        const totalPages = Math.max(1, Math.ceil(total / outlineState.size));
+        if (outlineState.page >= totalPages) return;
+        const nearBottom = (outlineContent.scrollTop + outlineContent.clientHeight) >= (outlineContent.scrollHeight - 80);
+        if (!nearBottom) return;
+        outlineState.infiniteLoading = true;
+        if (outlineState.infiniteLoadingEl) outlineState.infiniteLoadingEl.classList.remove("d-none");
+        try {
+            outlineState.page += 1;
+            await loadOutlinePageIntoModal();
+        } finally {
+            outlineState.infiniteLoading = false;
+            if (outlineState.infiniteLoadingEl) outlineState.infiniteLoadingEl.classList.add("d-none");
+        }
+    }, { passive: true });
 }
 
 if (closeOutlineModalBtn) {
@@ -1196,11 +1316,22 @@ function render(banks, docsMap) {
     const totalPages = Math.max(1, Math.ceil(banks.length / bankPageSize));
     if (currentBankPage > totalPages) currentBankPage = totalPages;
     if (currentBankPage < 1) currentBankPage = 1;
-    const start = (currentBankPage - 1) * bankPageSize;
-    const pageBanks = banks.slice(start, start + bankPageSize);
-    if (bankPageInfo) bankPageInfo.textContent = `第 ${currentBankPage} / ${totalPages} 页`;
-    if (bankPrevBtn) bankPrevBtn.disabled = currentBankPage <= 1;
-    if (bankNextBtn) bankNextBtn.disabled = currentBankPage >= totalPages;
+    const mobile = isMobileLike();
+    const pageBanks = mobile
+        ? banks.slice(0, currentBankPage * bankPageSize)
+        : banks.slice((currentBankPage - 1) * bankPageSize, (currentBankPage - 1) * bankPageSize + bankPageSize);
+    if (bankPageInfo) {
+        bankPageInfo.textContent = mobile ? "" : `第 ${currentBankPage} / ${totalPages} 页`;
+        bankPageInfo.classList.toggle("d-none", mobile);
+    }
+    if (bankPrevBtn) {
+        bankPrevBtn.disabled = mobile ? true : (currentBankPage <= 1);
+        bankPrevBtn.classList.toggle("d-none", mobile);
+    }
+    if (bankNextBtn) {
+        bankNextBtn.disabled = mobile ? true : (currentBankPage >= totalPages);
+        bankNextBtn.classList.toggle("d-none", mobile);
+    }
 
     pageBanks.forEach((bank) => {
         const docs = docsMap.get(bank.id) || [];
@@ -1346,7 +1477,13 @@ async function refresh() {
             }
         }),
     );
-    render(banks, new Map(docsList));
+    banksCache = Array.isArray(banks) ? banks : [];
+    bankDocsMapCache = new Map(docsList);
+    render(banksCache, bankDocsMapCache);
+    if (isMobileLike()) {
+        bindMobileBankInfiniteScroll();
+        bindOutlineInfiniteScroll();
+    }
 }
 
 uploadTaskFab.addEventListener("click", () => {

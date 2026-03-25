@@ -121,6 +121,42 @@ function isSidebarDrawerMode() {
     return window.getComputedStyle(sidebar).position === "fixed";
 }
 
+function isMobileLike() {
+    return isSidebarDrawerMode() === true
+        || (!!window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
+}
+
+function setMobilePagerUiHidden(hidden) {
+    const h = !!hidden;
+    if (questionPageInfo) questionPageInfo.classList.toggle("d-none", h);
+    if (paperPageInfo) paperPageInfo.classList.toggle("d-none", h);
+    if (recordPageInfo) recordPageInfo.classList.toggle("d-none", h);
+    // “当前页全选”隐藏：是一个 label 包住 input
+    const selectAllLabel = selectAllQuestions?.closest?.("label");
+    if (selectAllLabel) selectAllLabel.classList.toggle("d-none", h);
+}
+
+function ensureMobileLoadingEl(key, afterEl) {
+    if (!window.__mobileInfiniteLoadingEls) window.__mobileInfiniteLoadingEls = {};
+    if (window.__mobileInfiniteLoadingEls[key]) return window.__mobileInfiniteLoadingEls[key];
+    if (!afterEl) return null;
+    const el = document.createElement("div");
+    el.id = `mobileInfiniteLoading-${key}`;
+    el.className = "d-none text-center text-secondary small py-3";
+    el.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div><div class="mt-2">加载中...</div>';
+    afterEl.insertAdjacentElement("afterend", el);
+    window.__mobileInfiniteLoadingEls[key] = el;
+    return el;
+}
+
+function setMobileInfiniteLoadingVisible(key, visible) {
+    if (!isMobileLike()) return;
+    const afterEl = key === "questions" ? questionPool : (key === "papers" ? paperList : examHistoryList);
+    const el = ensureMobileLoadingEl(key, afterEl);
+    if (!el) return;
+    el.classList.toggle("d-none", !visible);
+}
+
 function saveGenTasksToStorage() {
     const running = Array.from(genTaskMap.values())
         .filter((t) => t.taskId && (t.status === "PENDING" || t.status === "RUNNING"))
@@ -216,6 +252,11 @@ const paperPageSize = 8;
 let currentRecordPage = 1;
 let currentRecordTotalPages = 1;
 const recordPageSize = 8;
+let mobileQuestionItems = [];
+let mobilePaperItems = [];
+let mobileRecordItems = [];
+let mobileInfiniteBound = false;
+let pagingLoading = { questions: false, papers: false, records: false };
 const MODULE_META = {
     operation: { title: "考试操作台", panel: moduleOperation },
     examSession: { title: "考试视图", panel: moduleExamSession },
@@ -1253,8 +1294,9 @@ function difficultyStars(level) {
     return "★".repeat(n) + "☆".repeat(5 - n);
 }
 
-function renderQuestionPool(list) {
-    questionPool.innerHTML = "";
+function renderQuestionPool(list, { append = false } = {}) {
+    if (!append) questionPool.innerHTML = "";
+    const startIndex = append ? questionPool.querySelectorAll(".question-row").length : 0;
     list.forEach((q, i) => {
         const item = document.createElement("div");
         item.className = "question-row p-3";
@@ -1264,7 +1306,7 @@ function renderQuestionPool(list) {
         item.innerHTML = `
             <div class="d-flex justify-content-between align-items-start gap-2">
                 <div class="question-row-content">
-                    <label class="mb-2"><input class="form-check-input me-2" type="checkbox" data-qid="${q.id}" ${selectedQuestionIds.has(q.id) ? "checked" : ""}>${i + 1}. ${q.stem}</label>
+                    <label class="mb-2"><input class="form-check-input me-2" type="checkbox" data-qid="${q.id}" ${selectedQuestionIds.has(q.id) ? "checked" : ""}>${startIndex + i + 1}. ${q.stem}</label>
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-shrink-0">
                     ${stars ? `<span class="text-warning small" title="难度">${stars}</span>` : ""}
@@ -1300,9 +1342,19 @@ function syncSelectAllState() {
 function updateQuestionPager(page, totalPages) {
     currentQuestionPage = page;
     currentQuestionTotalPages = totalPages || 1;
-    questionPageInfo.textContent = `第 ${currentQuestionPage} / ${currentQuestionTotalPages} 页`;
-    prevPageBtn.disabled = currentQuestionPage <= 1;
-    nextPageBtn.disabled = currentQuestionPage >= currentQuestionTotalPages;
+    if (isMobileLike()) {
+        questionPageInfo.textContent = "";
+        prevPageBtn.disabled = true;
+        nextPageBtn.disabled = true;
+        prevPageBtn.classList.add("d-none");
+        nextPageBtn.classList.add("d-none");
+    } else {
+        questionPageInfo.textContent = `第 ${currentQuestionPage} / ${currentQuestionTotalPages} 页`;
+        prevPageBtn.disabled = currentQuestionPage <= 1;
+        nextPageBtn.disabled = currentQuestionPage >= currentQuestionTotalPages;
+        prevPageBtn.classList.remove("d-none");
+        nextPageBtn.classList.remove("d-none");
+    }
 }
 
 const FILTER_TAG_MAX = 3;
@@ -1773,20 +1825,42 @@ async function refreshQuestions(page = currentQuestionPage) {
     }
     categories = Array.from(new Set(categories));
     const types = getSelectedQuestionTypeFilter();
+    const mobile = isMobileLike();
+    const append = mobile && page > 1;
     const data = await listQuestionsPaged(bankId, page, questionPageSize, difficulties, categories, types);
-    renderQuestionPool(data.items || []);
+    const items = Array.isArray(data.items) ? data.items : [];
+    if (mobile) {
+        if (!append) mobileQuestionItems = [];
+        mobileQuestionItems = mobileQuestionItems.concat(items);
+        renderQuestionPool(items, { append });
+    } else {
+        renderQuestionPool(items, { append: false });
+    }
     updateQuestionPager(data.page || page, data.totalPages || 1);
 }
 
-async function refreshPapers() {
-    const data = await listPapersPaged(bankSelect.value, currentPaperPage, paperPageSize);
-    const list = data.items || [];
-    currentPaperPage = data.page || currentPaperPage;
+async function refreshPapers({ page = currentPaperPage, append = false } = {}) {
+    const data = await listPapersPaged(bankSelect.value, page, paperPageSize);
+    const list = Array.isArray(data.items) ? data.items : [];
+    currentPaperPage = data.page || page;
     currentPaperTotalPages = data.totalPages || 1;
-    paperPageInfo.textContent = `第 ${currentPaperPage} / ${currentPaperTotalPages} 页`;
-    paperPrevBtn.disabled = currentPaperPage <= 1;
-    paperNextBtn.disabled = currentPaperPage >= currentPaperTotalPages;
-    paperList.innerHTML = "";
+    const mobile = isMobileLike();
+    if (mobile) {
+        if (!append) mobilePaperItems = [];
+        mobilePaperItems = mobilePaperItems.concat(list);
+    }
+    if (paperPageInfo) {
+        paperPageInfo.textContent = mobile ? "" : `第 ${currentPaperPage} / ${currentPaperTotalPages} 页`;
+    }
+    if (paperPrevBtn) {
+        paperPrevBtn.disabled = mobile ? true : (currentPaperPage <= 1);
+        paperPrevBtn.classList.toggle("d-none", mobile);
+    }
+    if (paperNextBtn) {
+        paperNextBtn.disabled = mobile ? true : (currentPaperPage >= currentPaperTotalPages);
+        paperNextBtn.classList.toggle("d-none", mobile);
+    }
+    if (!append) paperList.innerHTML = "";
     const currentUserId = ApiClient.getUser()?.id ?? null;
     list.forEach((p) => {
         const div = document.createElement("div");
@@ -1907,7 +1981,7 @@ async function refreshPapers() {
         paperList.appendChild(div);
     });
     if (!list.length) {
-        paperList.innerHTML = '<div class="text-secondary small">暂无试卷</div>';
+        if (!append) paperList.innerHTML = '<div class="text-secondary small">暂无试卷</div>';
     }
 }
 
@@ -2320,16 +2394,33 @@ function getRecordUserScore(item) {
 }
 
 async function refreshExamHistory() {
-    const data = await listExamRecordsPaged(bankSelect.value, currentRecordPage, recordPageSize);
-    const list = data.items || [];
-    currentRecordPage = data.page || currentRecordPage;
+    return refreshExamHistoryPaged({ page: currentRecordPage, append: false });
+}
+
+async function refreshExamHistoryPaged({ page = currentRecordPage, append = false } = {}) {
+    const data = await listExamRecordsPaged(bankSelect.value, page, recordPageSize);
+    const list = Array.isArray(data.items) ? data.items : [];
+    currentRecordPage = data.page || page;
     currentRecordTotalPages = data.totalPages || 1;
-    recordPageInfo.textContent = `第 ${currentRecordPage} / ${currentRecordTotalPages} 页`;
-    recordPrevBtn.disabled = currentRecordPage <= 1;
-    recordNextBtn.disabled = currentRecordPage >= currentRecordTotalPages;
-    examHistoryList.innerHTML = "";
+    const mobile = isMobileLike();
+    if (mobile) {
+        if (!append) mobileRecordItems = [];
+        mobileRecordItems = mobileRecordItems.concat(list);
+    }
+    if (recordPageInfo) {
+        recordPageInfo.textContent = mobile ? "" : `第 ${currentRecordPage} / ${currentRecordTotalPages} 页`;
+    }
+    if (recordPrevBtn) {
+        recordPrevBtn.disabled = mobile ? true : (currentRecordPage <= 1);
+        recordPrevBtn.classList.toggle("d-none", mobile);
+    }
+    if (recordNextBtn) {
+        recordNextBtn.disabled = mobile ? true : (currentRecordPage >= currentRecordTotalPages);
+        recordNextBtn.classList.toggle("d-none", mobile);
+    }
+    if (!append) examHistoryList.innerHTML = "";
     if (!list.length) {
-        examHistoryList.innerHTML = '<div class="text-secondary small">暂无考试记录</div>';
+        if (!append) examHistoryList.innerHTML = '<div class="text-secondary small">暂无考试记录</div>';
         return;
     }
     list.forEach((item) => {
@@ -2366,6 +2457,99 @@ async function refreshExamHistory() {
         });
         examHistoryList.appendChild(row);
     });
+}
+
+function bindMobileInfiniteScroll() {
+    if (mobileInfiniteBound) return;
+    mobileInfiniteBound = true;
+
+    function ensureSentinel(id, afterEl) {
+        let el = document.getElementById(id);
+        if (el) return el;
+        el = document.createElement("div");
+        el.id = id;
+        el.style.height = "1px";
+        el.style.width = "100%";
+        afterEl.insertAdjacentElement("afterend", el);
+        return el;
+    }
+
+    async function loadNextQuestionsIfNeeded() {
+        if (!isMobileLike()) return;
+        if (pagingLoading.questions) return;
+        if (activeModule !== "operation") return;
+        if (currentQuestionPage >= currentQuestionTotalPages) return;
+        pagingLoading.questions = true;
+        setMobileInfiniteLoadingVisible("questions", true);
+        try {
+            await refreshQuestions(currentQuestionPage + 1);
+        } finally {
+            pagingLoading.questions = false;
+            setMobileInfiniteLoadingVisible("questions", false);
+        }
+    }
+
+    async function loadNextPapersIfNeeded() {
+        if (!isMobileLike()) return;
+        if (pagingLoading.papers) return;
+        if (activeModule !== "papers") return;
+        if (paperDetailSection && !paperDetailSection.classList.contains("d-none")) return;
+        if (currentPaperPage >= currentPaperTotalPages) return;
+        pagingLoading.papers = true;
+        setMobileInfiniteLoadingVisible("papers", true);
+        try {
+            await refreshPapers({ page: currentPaperPage + 1, append: true });
+        } finally {
+            pagingLoading.papers = false;
+            setMobileInfiniteLoadingVisible("papers", false);
+        }
+    }
+
+    async function loadNextRecordsIfNeeded() {
+        if (!isMobileLike()) return;
+        if (pagingLoading.records) return;
+        if (activeModule !== "records") return;
+        if (recordDetailSection && !recordDetailSection.classList.contains("d-none")) return;
+        if (currentRecordPage >= currentRecordTotalPages) return;
+        pagingLoading.records = true;
+        setMobileInfiniteLoadingVisible("records", true);
+        try {
+            await refreshExamHistoryPaged({ page: currentRecordPage + 1, append: true });
+        } finally {
+            pagingLoading.records = false;
+            setMobileInfiniteLoadingVisible("records", false);
+        }
+    }
+
+    const qSentinel = questionPool ? ensureSentinel("questionPoolInfiniteSentinel", questionPool) : null;
+    const pSentinel = paperList ? ensureSentinel("paperListInfiniteSentinel", paperList) : null;
+    const rSentinel = examHistoryList ? ensureSentinel("recordListInfiniteSentinel", examHistoryList) : null;
+    ensureMobileLoadingEl("questions", questionPool);
+    ensureMobileLoadingEl("papers", paperList);
+    ensureMobileLoadingEl("records", examHistoryList);
+
+    if ("IntersectionObserver" in window) {
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((e) => {
+                if (!e.isIntersecting) return;
+                if (e.target === qSentinel) void loadNextQuestionsIfNeeded();
+                if (e.target === pSentinel) void loadNextPapersIfNeeded();
+                if (e.target === rSentinel) void loadNextRecordsIfNeeded();
+            });
+        }, { root: null, rootMargin: "120px 0px 240px 0px", threshold: 0 });
+        if (qSentinel) io.observe(qSentinel);
+        if (pSentinel) io.observe(pSentinel);
+        if (rSentinel) io.observe(rSentinel);
+        return;
+    }
+
+    window.addEventListener("scroll", () => {
+        const nearBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 300);
+        if (!nearBottom) return;
+        void loadNextQuestionsIfNeeded();
+        void loadNextPapersIfNeeded();
+        void loadNextRecordsIfNeeded();
+    }, { passive: true });
 }
 
 async function initBanks() {
@@ -3181,6 +3365,8 @@ moduleTags.addEventListener("click", (e) => {
     if (!ApiClient.requireAuth()) return;
     if (window.PhoneBindModal) await PhoneBindModal.ensureBound();
     updateQuestionUsageHint();
+    // 移动端：初始化阶段即隐藏“全选/分页”相关 UI，避免后端未返回时闪现
+    setMobilePagerUiHidden(isMobileLike());
     try {
         await initBanks();
         renderModuleTabs();
@@ -3200,6 +3386,12 @@ moduleTags.addEventListener("click", (e) => {
                 refreshPapers(),
                 refreshExamHistory(),
             ]);
+            if (isMobileLike()) {
+                setMobilePagerUiHidden(true);
+                bindMobileInfiniteScroll();
+            } else {
+                setMobilePagerUiHidden(false);
+            }
         }
     } catch {
         show("初始化失败，请先启动后端", "danger");
