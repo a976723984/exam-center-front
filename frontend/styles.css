@@ -2008,6 +2008,13 @@ body.phone-bind-open {
     letter-spacing: 0.02em;
 }
 
+.web-sidebar-logo {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
 .web-side-link {
     display: inline-flex;
     align-items: center;
