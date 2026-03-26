@@ -178,6 +178,11 @@ body {
     white-space: normal;
 }
 
+/* 题库页知识大纲弹窗关闭按钮：与 Bootstrap modal 关闭按钮对齐 */
+.outline-modal-close-btn {
+    flex: 0 0 auto;
+}
+
 .outline-block-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -1268,6 +1273,9 @@ button:active, .link-btn:active {
     justify-content: center;
     cursor: pointer;
     z-index: 1050;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
 }
 
 .upload-task-fab-count {
@@ -1830,17 +1838,16 @@ button:active, .link-btn:active {
 
 @media (max-width: 767px) {
     .plan-cards-row {
-        flex-direction: row;
+        flex-direction: column;
         flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow-x: visible;
         gap: 12px;
-        padding-bottom: 6px;
+        padding-bottom: 0;
     }
     .plan-cards-row > [class*="col-"] {
-        flex: 0 0 auto;
-        width: 82vw;
-        max-width: 360px;
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: 100%;
     }
     .plan-card {
         min-width: 0;
@@ -2069,6 +2076,11 @@ body.phone-bind-open {
 }
 
 @media (max-width: 992px) {
+    :root {
+        --mobile-bottom-nav-height: 62px;
+        --mobile-modal-gap: 12px;
+    }
+
     body {
         background: #ffffff !important;
     }
@@ -2158,6 +2170,47 @@ body.phone-bind-open {
         background: rgba(255, 255, 255, 0.96);
         backdrop-filter: blur(10px);
         border-top: 1px solid #dbe3ef;
+    }
+
+    /* 移动端弹窗：层级高于底部导航，避免被遮挡 */
+    .modal-backdrop {
+        z-index: 1290 !important;
+    }
+    .modal {
+        z-index: 1300 !important;
+    }
+    .upload-task-backdrop,
+    .payment-modal-backdrop,
+    .app-modal-backdrop,
+    .auth-popup-backdrop {
+        z-index: 1300 !important;
+    }
+
+    /* 移动端弹窗：预留底部导航+安全区，保证完整可见 */
+    .modal-dialog {
+        margin: var(--mobile-modal-gap);
+    }
+    .modal .modal-content {
+        max-height: calc(
+            100dvh
+            - var(--mobile-bottom-nav-height)
+            - env(safe-area-inset-bottom, 0px)
+            - var(--mobile-modal-gap) * 2
+        );
+        overflow: auto;
+    }
+    .upload-task-modal-card,
+    .payment-modal-card,
+    .app-modal-card,
+    .auth-modal-card,
+    .phone-bind-card {
+        max-height: calc(
+            100dvh
+            - var(--mobile-bottom-nav-height)
+            - env(safe-area-inset-bottom, 0px)
+            - var(--mobile-modal-gap) * 2
+        );
+        overflow: auto;
     }
 
     .mobile-bottom-nav-link {
@@ -2429,6 +2482,11 @@ body.phone-bind-open {
         width: 100%;
         margin-top: 8px;
         justify-content: flex-start;
+    }
+
+    /* 移动端：知识大纲弹窗不展示关闭按钮 */
+    .outline-modal-close-btn {
+        display: none !important;
     }
 }
 

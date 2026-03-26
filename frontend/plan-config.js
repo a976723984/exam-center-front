@@ -12,7 +12,7 @@
             priceMonthly: 0,
             priceQuarterly: 0,
             priceYearly: 0,
-            desc: "免费，限 1 个题库；注册赠送 100 白塔币（1 题 = 1 币）",
+            desc: "免费，限 1 个题库；注册赠送 100 白塔币",
         },
         personal: {
             id: "personal",
@@ -21,7 +21,7 @@
             priceMonthly: 10,
             priceQuarterly: Math.round(10 * 3 * (1 - 0.15)),
             priceYearly: Math.round(10 * 12 * (1 - 0.35)),
-            desc: "20 个题库，知识文件容量 10G；每月赠送 300 白塔币（1 题 = 1 币）",
+            desc: "20 个题库，知识文件容量 10G；每月赠送 300 白塔币",
         },
         advanced: {
             id: "advanced",
@@ -30,7 +30,7 @@
             priceMonthly: 15,
             priceQuarterly: Math.round(15 * 3 * (1 - 0.15)),
             priceYearly: Math.round(15 * 12 * (1 - 0.35)),
-            desc: "题库不限量，知识文件容量 20G；每月赠送 800 白塔币（1 题 = 1 币）",
+            desc: "题库不限量，知识文件容量 20G；每月赠送 800 白塔币",
         },
     };
 

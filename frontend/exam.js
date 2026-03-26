@@ -18,7 +18,7 @@ const paperNextBtn = document.getElementById("paperNextBtn");
 const paperPageInfo = document.getElementById("paperPageInfo");
 const backPaperListBtn = document.getElementById("backPaperListBtn");
 const startExamBtn = document.getElementById("startExamBtn");
-const applyQuestionFilterMobile = document.getElementById("applyQuestionFilterMobile");
+const questionFiltersDrawer = document.getElementById("questionFiltersRow");
 const genBtnMobile = document.getElementById("genBtnMobile");
 const deleteSelectedBtnMobile = document.getElementById("deleteSelectedBtnMobile");
 const manualPaperBtnMobile = document.getElementById("manualPaperBtnMobile");
@@ -1107,6 +1107,29 @@ async function getExamStats(bankId, paperId) {
 }
 
 let statsCharts = { examCount: null, wrongCount: null, score: null };
+
+function getCurrentStatsBankId() {
+    // 移动端统计复用左侧抽屉题库；桌面端优先使用统计区题库下拉。
+    if (isMobileLike()) {
+        return bankSelectMobile?.value || bankSelect?.value || "";
+    }
+    return statsBankSelect?.value || bankSelect?.value || "";
+}
+
+async function refreshStatsPaperOptionsByBank(bankId) {
+    if (!statsPaperSelect) return;
+    statsPaperSelect.innerHTML = '<option value="">全部试卷</option>';
+    if (!bankId) return;
+    try {
+        const papers = await listPapers(bankId);
+        (papers || []).forEach((p) => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.textContent = p.title || "未命名试卷";
+            statsPaperSelect.appendChild(opt);
+        });
+    } catch (_) {}
+}
 let chartJsLoadPromise = null;
 
 function ensureChartJsLoaded() {
@@ -1230,7 +1253,7 @@ function renderStatsSummary(stats) {
 }
 
 async function loadStatsAndCharts() {
-    const bankId = statsBankSelect?.value;
+    const bankId = getCurrentStatsBankId();
     if (!bankId) {
         if (statsSummary) statsSummary.innerHTML = "<span class=\"text-secondary\">请选择题库</span>";
         destroyStatsCharts();
@@ -1283,31 +1306,22 @@ async function showPublicStatsModal(paperId) {
 }
 
 async function initStatsPanel() {
-    if (!statsBankSelect || !statsPaperSelect) return;
-    const banks = await fetchBanks();
-    statsBankSelect.innerHTML = "";
-    banks.forEach((b) => {
-        const opt = document.createElement("option");
-        opt.value = b.id;
-        opt.textContent = b.name;
-        statsBankSelect.appendChild(opt);
-    });
-    if (bankSelect?.value && Array.from(statsBankSelect.options).some((o) => o.value === bankSelect.value)) {
-        statsBankSelect.value = bankSelect.value;
+    if (!statsPaperSelect) return;
+    if (statsBankSelect) {
+        const banks = await fetchBanks();
+        statsBankSelect.innerHTML = "";
+        banks.forEach((b) => {
+            const opt = document.createElement("option");
+            opt.value = b.id;
+            opt.textContent = b.name;
+            statsBankSelect.appendChild(opt);
+        });
+        if (bankSelect?.value && Array.from(statsBankSelect.options).some((o) => o.value === bankSelect.value)) {
+            statsBankSelect.value = bankSelect.value;
+        }
     }
-    const bankId = statsBankSelect.value;
-    statsPaperSelect.innerHTML = '<option value="">全部试卷</option>';
-    if (bankId) {
-        try {
-            const papers = await listPapers(bankId);
-            (papers || []).forEach((p) => {
-                const opt = document.createElement("option");
-                opt.value = p.id;
-                opt.textContent = p.title || "未命名试卷";
-                statsPaperSelect.appendChild(opt);
-            });
-        } catch (_) {}
-    }
+    const bankId = getCurrentStatsBankId();
+    await refreshStatsPaperOptionsByBank(bankId);
     await loadStatsAndCharts();
 }
 
@@ -1381,6 +1395,35 @@ function updateQuestionPager(page, totalPages) {
 }
 
 const FILTER_TAG_MAX = 3;
+let mobileFilterRefreshTimer = 0;
+
+function collapseMobileQuestionFiltersDrawer() {
+    if (!questionFiltersDrawer || !isMobileLike()) return;
+    questionFiltersDrawer.removeAttribute("open");
+}
+
+function triggerMobileFilterRefresh({ immediate = false } = {}) {
+    if (!isMobileLike()) return;
+    if (mobileFilterRefreshTimer) {
+        clearTimeout(mobileFilterRefreshTimer);
+        mobileFilterRefreshTimer = 0;
+    }
+    const run = async () => {
+        try {
+            await refreshQuestions(1);
+        } catch (e) {
+            show(e?.message || "查询失败", "danger");
+        }
+    };
+    if (immediate) {
+        void run();
+        return;
+    }
+    mobileFilterRefreshTimer = setTimeout(() => {
+        mobileFilterRefreshTimer = 0;
+        void run();
+    }, 120);
+}
 
 function getSelectedDifficultyFilter() {
     const el = document.getElementById("filterDifficulty");
@@ -1423,6 +1466,7 @@ function renderFilterDifficultyTags() {
             if (cb) {
                 cb.checked = false;
                 renderFilterDifficultyTags();
+                triggerMobileFilterRefresh({ immediate: true });
             }
         });
     });
@@ -1540,7 +1584,9 @@ function renderFilterKnowledgeFileTags() {
             if (cb) {
                 cb.checked = false;
                 renderFilterKnowledgeFileTags();
-                void renderOutlineFilterBySelectedKnowledgeFiles();
+                void renderOutlineFilterBySelectedKnowledgeFiles().then(() => {
+                    triggerMobileFilterRefresh({ immediate: true });
+                });
             }
         });
     });
@@ -1575,6 +1621,7 @@ function renderFilterOutlineTags() {
             if (cb) {
                 cb.checked = false;
                 renderFilterOutlineTags();
+                triggerMobileFilterRefresh({ immediate: true });
             }
         });
     });
@@ -1696,7 +1743,10 @@ async function renderOutlineFilterBySelectedKnowledgeFiles() {
             <span class="small">${escapeHtml(o)}</span>
         </label>`).join("");
     outlineEl.querySelectorAll(".filter-outline-cb").forEach((cb) => {
-        cb.addEventListener("change", renderFilterOutlineTags);
+        cb.addEventListener("change", () => {
+            renderFilterOutlineTags();
+            triggerMobileFilterRefresh({ immediate: true });
+        });
     });
     const outlineMenu = document.getElementById("filterOutlineMenu");
     if (outlineMenu) outlineMenu.addEventListener("click", (e) => e.stopPropagation());
@@ -1735,6 +1785,7 @@ function renderFilterQuestionTypeTags() {
             if (cb) {
                 cb.checked = false;
                 renderFilterQuestionTypeTags();
+                triggerMobileFilterRefresh({ immediate: true });
             }
         });
     });
@@ -1757,7 +1808,10 @@ async function loadQuestionFilters(bankId) {
             <span class="small">${n}星</span>
         </label>`).join("");
     diffEl.querySelectorAll(".filter-diff-cb").forEach((cb) => {
-        cb.addEventListener("change", renderFilterDifficultyTags);
+        cb.addEventListener("change", () => {
+            renderFilterDifficultyTags();
+            triggerMobileFilterRefresh();
+        });
     });
     const diffMenu = document.getElementById("filterDifficultyMenu");
     if (diffMenu) {
@@ -1800,7 +1854,9 @@ async function loadQuestionFilters(bankId) {
     fileEl.querySelectorAll(".filter-file-cb").forEach((cb) => {
         cb.addEventListener("change", () => {
             renderFilterKnowledgeFileTags();
-            void renderOutlineFilterBySelectedKnowledgeFiles();
+            void renderOutlineFilterBySelectedKnowledgeFiles().then(() => {
+                triggerMobileFilterRefresh({ immediate: true });
+            });
         });
     });
     const fileMenu = document.getElementById("filterKnowledgeFileMenu");
@@ -1814,7 +1870,10 @@ async function loadQuestionFilters(bankId) {
             <span class="small">${escapeHtml(opt.label)}</span>
         </label>`).join("");
     typeEl.querySelectorAll(".filter-qtype-cb").forEach((cb) => {
-        cb.addEventListener("change", renderFilterQuestionTypeTags);
+        cb.addEventListener("change", () => {
+            renderFilterQuestionTypeTags();
+            triggerMobileFilterRefresh();
+        });
     });
     const typeMenu = document.getElementById("filterQuestionTypeMenu");
     if (typeMenu) {
@@ -2876,7 +2935,61 @@ document.getElementById("generateQuestionModalConfirm")?.addEventListener("click
     }, "提交中...");
 });
 
-if (genTaskFab) genTaskFab.addEventListener("click", openGenTaskModal);
+if (genTaskFab) {
+    let genTaskFabDragMoved = false;
+    let genTaskFabStartX = 0;
+    let genTaskFabStartY = 0;
+    let genTaskFabStartLeft = 0;
+    let genTaskFabStartTop = 0;
+    const genTaskFabTouchMoveOptions = { passive: false };
+    const onGenTaskFabPointerMove = (e) => {
+        if (e.touches && e.cancelable) {
+            e.preventDefault();
+        }
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const y = e.touches ? e.touches[0].clientY : e.clientY;
+        genTaskFabDragMoved = true;
+        genTaskFab.style.right = "auto";
+        genTaskFab.style.bottom = "auto";
+        genTaskFab.style.left = `${genTaskFabStartLeft + (x - genTaskFabStartX)}px`;
+        genTaskFab.style.top = `${genTaskFabStartTop + (y - genTaskFabStartY)}px`;
+    };
+    const onGenTaskFabPointerUp = () => {
+        document.removeEventListener("mousemove", onGenTaskFabPointerMove);
+        document.removeEventListener("mouseup", onGenTaskFabPointerUp);
+        document.removeEventListener("touchmove", onGenTaskFabPointerMove, genTaskFabTouchMoveOptions);
+        document.removeEventListener("touchend", onGenTaskFabPointerUp);
+    };
+    genTaskFab.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
+        const rect = genTaskFab.getBoundingClientRect();
+        genTaskFabDragMoved = false;
+        genTaskFabStartX = e.clientX;
+        genTaskFabStartY = e.clientY;
+        genTaskFabStartLeft = rect.left;
+        genTaskFabStartTop = rect.top;
+        document.addEventListener("mousemove", onGenTaskFabPointerMove);
+        document.addEventListener("mouseup", onGenTaskFabPointerUp);
+    });
+    genTaskFab.addEventListener("touchstart", (e) => {
+        if (!e.touches.length) return;
+        const rect = genTaskFab.getBoundingClientRect();
+        genTaskFabDragMoved = false;
+        genTaskFabStartX = e.touches[0].clientX;
+        genTaskFabStartY = e.touches[0].clientY;
+        genTaskFabStartLeft = rect.left;
+        genTaskFabStartTop = rect.top;
+        document.addEventListener("touchmove", onGenTaskFabPointerMove, genTaskFabTouchMoveOptions);
+        document.addEventListener("touchend", onGenTaskFabPointerUp);
+    });
+    genTaskFab.addEventListener("click", () => {
+        if (genTaskFabDragMoved) {
+            genTaskFabDragMoved = false;
+            return;
+        }
+        openGenTaskModal();
+    });
+}
 if (closeGenTaskModalBtn) closeGenTaskModalBtn.addEventListener("click", closeGenTaskModal);
 if (genTaskModalBackdrop) {
     genTaskModalBackdrop.addEventListener("click", (ev) => {
@@ -3295,9 +3408,6 @@ if (applyQuestionFilter) {
     });
 }
 
-if (applyQuestionFilterMobile && applyQuestionFilter) {
-    applyQuestionFilterMobile.addEventListener("click", () => applyQuestionFilter.click());
-}
 if (genBtnMobile && genBtn) {
     genBtnMobile.addEventListener("click", () => genBtn.click());
 }
@@ -3315,24 +3425,25 @@ if (startExamBtnMobile && startExamBtn) {
 }
 
 statsBankSelect?.addEventListener("change", async () => {
-    if (!statsPaperSelect) return;
-    statsPaperSelect.innerHTML = '<option value="">全部试卷</option>';
-    const bankId = statsBankSelect.value;
-    if (bankId) {
-        try {
-            const papers = await listPapers(bankId);
-            (papers || []).forEach((p) => {
-                const opt = document.createElement("option");
-                opt.value = p.id;
-                opt.textContent = p.title || "未命名试卷";
-                statsPaperSelect.appendChild(opt);
-            });
-        } catch (_) {}
-    }
+    const bankId = getCurrentStatsBankId();
+    await refreshStatsPaperOptionsByBank(bankId);
     await loadStatsAndCharts();
 });
 statsPaperSelect?.addEventListener("change", () => loadStatsAndCharts());
 statsQueryBtn?.addEventListener("click", () => loadStatsAndCharts());
+
+function syncStatsPanelByCurrentBankSelection() {
+    if (!moduleStats || moduleStats.classList.contains("d-none")) return;
+    const bankId = getCurrentStatsBankId();
+    void refreshStatsPaperOptionsByBank(bankId).then(() => loadStatsAndCharts());
+}
+
+bankSelect?.addEventListener("change", () => {
+    syncStatsPanelByCurrentBankSelection();
+});
+bankSelectMobile?.addEventListener("change", () => {
+    syncStatsPanelByCurrentBankSelection();
+});
 
 document.addEventListener("click", (e) => {
     const btn = e.target.closest(".module-menu-btn");
@@ -3341,6 +3452,12 @@ document.addEventListener("click", (e) => {
         closeExamSidebarNow();
     }
 }, true);
+document.addEventListener("click", (e) => {
+    if (!questionFiltersDrawer || !isMobileLike()) return;
+    if (!questionFiltersDrawer.hasAttribute("open")) return;
+    if (questionFiltersDrawer.contains(e.target)) return;
+    collapseMobileQuestionFiltersDrawer();
+});
 moduleMenuBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
         const key = btn.getAttribute("data-module");

@@ -40,13 +40,13 @@ function getPlanFeatures(plan) {
     const storageGb = plan.id === "trial" ? 1 : plan.id === "personal" ? 10 : 20;
     features.push("知识文件容量：" + storageGb + "G");
     if (plan.id === "trial") {
-        features.push("白塔币：注册赠送 100（1 题 = 1 币）");
+        features.push("白塔币：注册赠送 100");
     } else if (plan.id === "personal") {
-        features.push("白塔币：每月赠送 300（1 题 = 1 币）");
+        features.push("白塔币：每月赠送 300");
     } else if (plan.id === "advanced") {
-        features.push("白塔币：每月赠送 800（1 题 = 1 币）");
+        features.push("白塔币：每月赠送 800");
     } else {
-        features.push("白塔币：按余额扣减（1 题 = 1 币）");
+        features.push("白塔币：按余额扣减");
     }
     return features;
 }
