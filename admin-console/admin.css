@@ -9,3 +9,16 @@
 code {
     font-size: 0.85em;
 }
+
+.admin-chart-wrap {
+    position: relative;
+    height: 180px;
+    min-height: 180px;
+    overflow: hidden;
+}
+
+.admin-chart-wrap canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}

@@ -84,6 +84,7 @@ aliyun:
    - `GET /api/admin/stats`：总用户、近 7 日活跃、按套餐（plan）人数
    - `GET /api/admin/users`：分页列表（可筛选套餐、搜索用户名/手机），展示最近登录、最近活跃、客户端版本
    - `PATCH /api/admin/users/{id}/plan`：修改用户套餐（`planId`：`trial` / `personal` / `advanced`）
+   - `PATCH /api/admin/users/{id}/baita-coins`：给用户发放（或扣减）白塔币（请求体：`{ "delta": 100 }`）
 
 > 未配置 `ADMIN_API_TOKEN` 时，访问 `/api/admin/**` 会返回「未配置运维管理令牌」提示。
 

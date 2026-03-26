@@ -61,6 +61,7 @@ const pageSize = 20;
 let chartLogin = null;
 let chartGenerated = null;
 let chartAnswered = null;
+let coinsModalInstance = null;
 
 async function loadStats() {
     const s = await adminFetch("/admin/stats");
@@ -152,6 +153,7 @@ async function loadUsers(page = 0) {
                     id: u.id,
                     username: u.username || "",
                     planId: u.planId || "trial",
+                    baitaCoins: u.baitaCoins ?? 0,
                 })
             );
             return `
@@ -160,6 +162,7 @@ async function loadUsers(page = 0) {
             <td>${escapeHtml(u.username)}</td>
             <td>${escapeHtml(u.phone || "—")}</td>
             <td><span class="badge text-bg-light border">${escapeHtml(u.planId || "trial")}</span></td>
+            <td><span class="fw-semibold">${u.baitaCoins ?? 0}</span></td>
             <td class="small">${escapeHtml(u.clientVersion || "—")}</td>
             <td class="small text-secondary">${escapeHtml(fmtTime(u.lastLoginAt))}</td>
             <td class="small text-secondary">${escapeHtml(fmtTime(u.lastActiveAt))}</td>
@@ -168,6 +171,9 @@ async function loadUsers(page = 0) {
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-sm btn-outline-primary btn-edit-plan" data-meta="${meta}">
                         改套餐
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-warning btn-adjust-coins" data-meta="${meta}">
+                        发币
                     </button>
                     <button type="button"
                         class="btn btn-sm btn-outline-success btn-user-usage"
@@ -209,6 +215,35 @@ async function loadUsers(page = 0) {
             openUserUsageModal(id, username).catch((e) => alert(e.message || "加载用户统计失败"));
         });
     });
+
+    tbody.querySelectorAll(".btn-adjust-coins").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            let u = { id: "", username: "", baitaCoins: 0 };
+            try {
+                u = JSON.parse(decodeURIComponent(btn.getAttribute("data-meta") || ""));
+            } catch {
+                /* ignore */
+            }
+            openCoinsModal(u);
+        });
+    });
+}
+
+function openCoinsModal(user) {
+    const userIdEl = document.getElementById("coinsUserId");
+    const usernameEl = document.getElementById("coinsUsername");
+    const currentBalanceEl = document.getElementById("coinsCurrentBalance");
+    const deltaInputEl = document.getElementById("coinsDeltaInput");
+    const coinsModalEl = document.getElementById("coinsModal");
+    if (!userIdEl || !usernameEl || !currentBalanceEl || !deltaInputEl || !coinsModalEl) return;
+    userIdEl.value = String(user.id || "");
+    usernameEl.textContent = user.username || "";
+    currentBalanceEl.textContent = String(user.baitaCoins ?? 0);
+    deltaInputEl.value = "50";
+    if (!coinsModalInstance) {
+        coinsModalInstance = new bootstrap.Modal(coinsModalEl);
+    }
+    coinsModalInstance.show();
 }
 
 async function openUserUsageModal(userId, username) {
@@ -297,6 +332,33 @@ document.getElementById("savePlanBtn").addEventListener("click", async () => {
         await loadStats();
     } catch (e) {
         alert(e.message);
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+document.getElementById("saveCoinsBtn")?.addEventListener("click", async () => {
+    const userId = Number(document.getElementById("coinsUserId")?.value || "0");
+    const delta = Number(document.getElementById("coinsDeltaInput")?.value || "0");
+    const btn = document.getElementById("saveCoinsBtn");
+    if (!userId) {
+        alert("用户信息无效");
+        return;
+    }
+    if (!Number.isFinite(delta) || delta <= 0) {
+        alert("请输入大于 0 的发放数量");
+        return;
+    }
+    btn.disabled = true;
+    try {
+        await adminFetch(`/admin/users/${userId}/baita-coins`, {
+            method: "PATCH",
+            body: JSON.stringify({ delta }),
+        });
+        bootstrap.Modal.getInstance(document.getElementById("coinsModal"))?.hide();
+        await loadUsers(currentPage);
+    } catch (e) {
+        alert(e.message || "发放失败");
     } finally {
         btn.disabled = false;
     }

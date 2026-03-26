@@ -69,7 +69,9 @@
                     <div class="card-body">
                         <div class="text-secondary small">登录用户数（近 14 天每日）</div>
                         <div class="display-6 fw-semibold" id="statLoginTotal">—</div>
-                        <canvas id="chartLogin" height="90"></canvas>
+                        <div class="admin-chart-wrap mt-2">
+                            <canvas id="chartLogin" height="90"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -78,7 +80,9 @@
                     <div class="card-body">
                         <div class="text-secondary small">生成题目数量（近 14 天每日）</div>
                         <div class="display-6 fw-semibold" id="statGeneratedTotal">—</div>
-                        <canvas id="chartGenerated" height="90"></canvas>
+                        <div class="admin-chart-wrap mt-2">
+                            <canvas id="chartGenerated" height="90"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -87,7 +91,9 @@
                     <div class="card-body">
                         <div class="text-secondary small">答题次数（近 14 天每日）</div>
                         <div class="display-6 fw-semibold" id="statAnsweredTotal">—</div>
-                        <canvas id="chartAnswered" height="90"></canvas>
+                        <div class="admin-chart-wrap mt-2">
+                            <canvas id="chartAnswered" height="90"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -121,6 +127,7 @@
                             <th>用户名</th>
                             <th>手机</th>
                             <th>套餐</th>
+                            <th>白塔币</th>
                             <th>客户端版本</th>
                             <th>最近登录</th>
                             <th>最近活跃</th>
@@ -163,6 +170,31 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                 <button type="button" class="btn btn-primary" id="savePlanBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 发放白塔币 -->
+<div class="modal fade" id="coinsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">发放白塔币</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="coinsUserId">
+                <p class="small text-secondary mb-2">
+                    用户 <strong id="coinsUsername"></strong>，当前余额 <strong id="coinsCurrentBalance">0</strong> 币
+                </p>
+                <label class="form-label">发放数量</label>
+                <input type="number" id="coinsDeltaInput" class="form-control" min="1" step="1" value="50">
+                <div class="small text-secondary mt-2">仅支持发放正数，提交后将直接增加到该用户余额。</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveCoinsBtn">确认发放</button>
             </div>
         </div>
     </div>
