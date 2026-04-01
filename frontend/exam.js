@@ -43,7 +43,6 @@ const moduleExamSession = document.getElementById("moduleExamSession");
 const modulePapers = document.getElementById("modulePapers");
 const moduleRecords = document.getElementById("moduleRecords");
 const moduleStats = document.getElementById("moduleStats");
-const statsBankSelect = document.getElementById("statsBankSelect");
 const statsPaperSelect = document.getElementById("statsPaperSelect");
 const statsQueryBtn = document.getElementById("statsQueryBtn");
 const statsSummary = document.getElementById("statsSummary");
@@ -996,11 +995,12 @@ async function listQuestions(bankId) {
     return res.json();
 }
 
-async function listQuestionsPaged(bankId, page = 1, size = questionPageSize, difficulties = [], categories = [], types = []) {
+async function listQuestionsPaged(bankId, page = 1, size = questionPageSize, difficulties = [], categories = [], types = [], documentIds = []) {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     (difficulties || []).forEach((d) => params.append("difficulty", d));
     (categories || []).forEach((c) => params.append("category", c));
     (types || []).forEach((t) => params.append("type", t));
+    (documentIds || []).forEach((id) => params.append("documentId", id));
     const res = await ApiClient.request(`/banks/${bankId}/questions?${params.toString()}`);
     if (!res.ok) throw new Error("读取题目失败");
     return res.json();
@@ -1141,11 +1141,11 @@ async function getExamStats(bankId, paperId) {
 let statsCharts = { examCount: null, wrongCount: null, score: null };
 
 function getCurrentStatsBankId() {
-    // 移动端统计复用左侧抽屉题库；桌面端优先使用统计区题库下拉。
+    // 统计统一复用顶部“当前题库”选择。
     if (isMobileLike()) {
         return bankSelectMobile?.value || bankSelect?.value || "";
     }
-    return statsBankSelect?.value || bankSelect?.value || "";
+    return bankSelect?.value || bankSelectMobile?.value || "";
 }
 
 async function refreshStatsPaperOptionsByBank(bankId) {
@@ -1339,19 +1339,6 @@ async function showPublicStatsModal(paperId) {
 
 async function initStatsPanel() {
     if (!statsPaperSelect) return;
-    if (statsBankSelect) {
-        const banks = await fetchBanks();
-        statsBankSelect.innerHTML = "";
-        banks.forEach((b) => {
-            const opt = document.createElement("option");
-            opt.value = b.id;
-            opt.textContent = b.name;
-            statsBankSelect.appendChild(opt);
-        });
-        if (bankSelect?.value && Array.from(statsBankSelect.options).some((o) => o.value === bankSelect.value)) {
-            statsBankSelect.value = bankSelect.value;
-        }
-    }
     const bankId = getCurrentStatsBankId();
     await refreshStatsPaperOptionsByBank(bankId);
     await loadStatsAndCharts();
@@ -1699,6 +1686,15 @@ function parseSourceCategory(category, docBaseNames = []) {
     };
 }
 
+function collectFileCategoryCandidates(fileMeta) {
+    const candidates = [];
+    const baseName = String(fileMeta?.baseName || "").trim();
+    const fileName = String(fileMeta?.fileName || "").trim();
+    if (baseName) candidates.push(baseName);
+    if (fileName) candidates.push(fileName);
+    return Array.from(new Set(candidates));
+}
+
 function buildSourceFilterMaps(categories, docBaseNames = []) {
     const fileMap = new Map();
     (docBaseNames || []).forEach((name) => {
@@ -1881,8 +1877,8 @@ async function loadQuestionFilters(bankId) {
         })
         .filter((d) => d.id && d.baseName);
     docOptions.forEach((d) => currentKnowledgeFileOptionMap.set(d.id, d));
-    const docBaseNames = docOptions.map((d) => d.baseName);
-    buildSourceFilterMaps(currentQuestionCategoryOptions, docBaseNames);
+    const docCategoryNames = docOptions.flatMap((d) => collectFileCategoryCandidates(d));
+    buildSourceFilterMaps(currentQuestionCategoryOptions, docCategoryNames);
     fileEl.innerHTML = docOptions.length
         ? docOptions.map((d, i) => `
             <label class="form-check filter-option-row mb-0">
@@ -1931,24 +1927,16 @@ async function refreshQuestions(page = currentQuestionPage) {
     const selectedFiles = getSelectedKnowledgeFileFilter();
     const selectedOutlines = getSelectedOutlineFilter();
     let categories = [];
-    if (selectedFiles.length) {
-        if (selectedOutlines.length) {
-            selectedOutlines.forEach((outlineTitle) => {
-                (currentOutlineCategoryMap.get(outlineTitle) || []).forEach((full) => categories.push(full));
-            });
-        } else {
-            selectedFiles.forEach((fileId) => {
-                const fileMeta = currentKnowledgeFileOptionMap.get(String(fileId));
-                const fileName = fileMeta?.baseName || "";
-                (currentFileCategoryMap.get(fileName) || []).forEach((full) => categories.push(full));
-            });
-        }
+    if (selectedOutlines.length) {
+        selectedOutlines.forEach((outlineTitle) => {
+            (currentOutlineCategoryMap.get(outlineTitle) || []).forEach((full) => categories.push(full));
+        });
     }
     categories = Array.from(new Set(categories));
     const types = getSelectedQuestionTypeFilter();
     const mobile = isMobileLike();
     const append = mobile && page > 1;
-    const data = await listQuestionsPaged(bankId, page, questionPageSize, difficulties, categories, types);
+    const data = await listQuestionsPaged(bankId, page, questionPageSize, difficulties, categories, types, selectedFiles);
     const items = Array.isArray(data.items) ? data.items : [];
     if (mobile) {
         if (!append) mobileQuestionItems = [];
@@ -3542,11 +3530,6 @@ if (startExamBtnMobile && startExamBtn) {
     startExamBtnMobile.addEventListener("click", () => startExamBtn.click());
 }
 
-statsBankSelect?.addEventListener("change", async () => {
-    const bankId = getCurrentStatsBankId();
-    await refreshStatsPaperOptionsByBank(bankId);
-    await loadStatsAndCharts();
-});
 statsPaperSelect?.addEventListener("change", () => loadStatsAndCharts());
 statsQueryBtn?.addEventListener("click", () => loadStatsAndCharts());
 

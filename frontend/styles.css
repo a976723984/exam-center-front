@@ -2256,7 +2256,8 @@ body.phone-bind-open {
         flex: 0 0 auto;
         margin-left: auto;
     }
-    #closeGenTaskModalBtn {
+    #closeGenTaskModalBtn,
+    #closeUploadTaskModalBtn {
         display: none;
     }
 

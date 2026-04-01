@@ -28,8 +28,10 @@ const bankPageSize = 5;
 let banksCache = [];
 let bankDocsMapCache = new Map();
 let bankInfiniteBound = false;
+const outlineDocProgressMap = new Map();
 
 const OUTLINE_TASK_STORAGE_KEY_PREFIX = "exam-center-outline-tasks-v1";
+const outlineDocProgressPollingMap = new Map();
 
 function getOutlineTaskKey(bankId, documentId) {
     return `${bankId}:${documentId}`;
@@ -812,6 +814,59 @@ function hideOutlineParseProgress() {
     outlineParseProgressWrap.classList.add("d-none");
 }
 
+function normalizeOutlineStageText(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return "解析中…";
+    return raw.replace(/\s*[（(]\d+[)）]\s*$/, "").trim() || "解析中…";
+}
+
+function ensureOutlineDocProgressPolling(bankId, docId, taskId) {
+    const taskKey = getOutlineTaskKey(bankId, docId);
+    if (!taskId || outlineDocProgressPollingMap.has(taskKey)) return;
+    outlineDocProgressPollingMap.set(taskKey, true);
+    if (!outlineDocProgressMap.has(taskKey)) {
+        outlineDocProgressMap.set(taskKey, { percent: 0, text: "解析中…" });
+        render(banksCache, bankDocsMapCache);
+    }
+    const normalizedTaskId = String(taskId);
+    pollOutlineGenerateTaskStatus(bankId, normalizedTaskId, {
+        onUpdate: (t) => {
+            const pct = t?.progressPercent;
+            const stage = normalizeOutlineStageText(t?.currentStage);
+            outlineDocProgressMap.set(taskKey, { percent: pct ?? 0, text: stage });
+            render(banksCache, bankDocsMapCache);
+        },
+    })
+        .then(() => {
+            clearPersistedOutlineTaskId(bankId, docId);
+            outlineDocProgressMap.delete(taskKey);
+            render(banksCache, bankDocsMapCache);
+        })
+        .catch((err) => {
+            const message = String(err?.message || "");
+            if (message.includes("大纲解析任务不存在") || message.includes("任务不存在")) {
+                clearPersistedOutlineTaskId(bankId, docId);
+            }
+            outlineDocProgressMap.delete(taskKey);
+            render(banksCache, bankDocsMapCache);
+        })
+        .finally(() => {
+            outlineDocProgressPollingMap.delete(taskKey);
+        });
+}
+
+function restoreOutlineDocProgressFromStorage() {
+    for (const [bankId, docs] of bankDocsMapCache.entries()) {
+        if (!Array.isArray(docs)) continue;
+        docs.forEach((doc) => {
+            if (!doc || isImageFile(doc.fileName)) return;
+            const taskId = loadPersistedOutlineTaskId(bankId, doc.id);
+            if (!taskId) return;
+            ensureOutlineDocProgressPolling(bankId, doc.id, taskId);
+        });
+    }
+}
+
 function setOutlineNavDisabled(disabled) {
     if (outlinePrevBtn) outlinePrevBtn.disabled = !!disabled;
     if (outlineNextBtn) outlineNextBtn.disabled = !!disabled;
@@ -1083,8 +1138,10 @@ async function loadOutlinePageIntoModal() {
                     onUpdate: (t) => {
                         if (outlineState.loadSeq !== mySeq) return;
                         const pct = t?.progressPercent;
-                        const stage = t?.currentStage || "解析中…";
+                        const stage = normalizeOutlineStageText(t?.currentStage);
                         showOutlineParseProgress(pct ?? 0, stage);
+                        outlineDocProgressMap.set(taskKey, { percent: pct ?? 0, text: stage });
+                        render(banksCache, bankDocsMapCache);
                     },
                 },
             );
@@ -1107,6 +1164,8 @@ async function loadOutlinePageIntoModal() {
             outlineState.outlineTaskIdByDocId.set(taskKey, resolvedTaskId);
             persistOutlineTaskId(bankId, docId, resolvedTaskId);
             outlineState.openMode = "view";
+            outlineDocProgressMap.delete(taskKey);
+            render(banksCache, bankDocsMapCache);
             setOutlineNavDisabled(!outlineState.infinite);
             return;
         }
@@ -1138,8 +1197,10 @@ async function loadOutlinePageIntoModal() {
                 onUpdate: (t) => {
                     if (outlineState.loadSeq !== mySeq) return;
                     const pct = t?.progressPercent;
-                    const stage = t?.currentStage || "解析中…";
+                    const stage = normalizeOutlineStageText(t?.currentStage);
                     showOutlineParseProgress(pct ?? 0, stage);
+                    outlineDocProgressMap.set(taskKey, { percent: pct ?? 0, text: stage });
+                    render(banksCache, bankDocsMapCache);
                 },
             },
         );
@@ -1160,6 +1221,8 @@ async function loadOutlinePageIntoModal() {
         renderOutlinePageResponse(pageData);
         outlineState.useTaskForDocPage.set(taskKey, true);
         outlineState.openMode = "view";
+        outlineDocProgressMap.delete(taskKey);
+        render(banksCache, bankDocsMapCache);
         setOutlineNavDisabled(!outlineState.infinite);
     } catch (err) {
         console.error("[outline] render failed", {
@@ -1178,6 +1241,8 @@ async function loadOutlinePageIntoModal() {
             outlineState.useTaskForDocPage.delete(taskKey);
         }
         hideOutlineParseProgress();
+        outlineDocProgressMap.delete(taskKey);
+        render(banksCache, bankDocsMapCache);
         setOutlineNavDisabled(true);
         outlineContent.classList.remove("outline-content-box--grid");
         outlineContent.textContent = err?.message || "加载大纲失败";
@@ -1272,6 +1337,20 @@ function renderDocumentsGrid(bankId, docs, coverUrl) {
                     : `<div class="doc-cover doc-cover-fallback">FILE</div>`;
                 const cardClass = "doc-card doc-card--outlineable";
                 const safeName = escapeHtml(doc.fileName);
+                const progressKey = getOutlineTaskKey(bankId, doc.id);
+                const progress = outlineDocProgressMap.get(progressKey);
+                const progressPercent = Math.max(0, Math.min(100, Math.round(Number(progress?.percent ?? 0))));
+                const progressText = escapeHtml(progress?.text || "解析中…");
+                const progressHtml = progress
+                    ? `
+                            <div class="mt-2">
+                                <div class="small text-secondary mb-1">${progressText}</div>
+                                <div class="progress" role="progressbar" aria-label="大纲解析进度">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:${progressPercent}%">${progressPercent}%</div>
+                                </div>
+                            </div>
+                        `
+                    : "";
                 return `
                     <div class="${cardClass}" data-outline-bank="${bankId}" data-outline-doc="${doc.id}">
                         ${cover}
@@ -1284,6 +1363,7 @@ function renderDocumentsGrid(bankId, docs, coverUrl) {
                                     <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-doc-del="${bankId}-${doc.id}">删 除</button>
                                 </div>
                             </div>
+                            ${progressHtml}
                         </div>
                     </div>
                 `;
@@ -1484,6 +1564,7 @@ async function refresh() {
         bindMobileBankInfiniteScroll();
         bindOutlineInfiniteScroll();
     }
+    restoreOutlineDocProgressFromStorage();
 }
 
 uploadTaskFab.addEventListener("click", () => {
