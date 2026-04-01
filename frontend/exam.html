@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>组卷与考试</title>
+    <link rel="icon" type="image/png" href="./logo.png">
     <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="./styles.css">
@@ -11,7 +12,7 @@
 <body class="bg-body-tertiary has-mobile-bottom-nav page-exam-mobile">
     <div class="web-shell">
     <aside class="web-sidebar">
-        <div class="web-sidebar-brand"><i class="bi bi-mortarboard-fill"></i>小白塔云题库</div>
+        <div class="web-sidebar-brand"><img src="./logo.png" alt="小白塔云题库 Logo" class="web-sidebar-logo">小白塔云题库</div>
         <nav class="web-side-nav">
             <a class="web-side-link" href="./index.html"><i class="bi bi-house-door"></i>首页</a>
             <a class="web-side-link" href="./banks.html"><i class="bi bi-folder-check"></i>题库管理</a>
@@ -122,7 +123,7 @@
                         <h2 class="h5 mb-3">
                             <i class="bi bi-magic me-2 text-primary"></i>题库与出题
                         </h2>
-                        <details class="mobile-filter-drawer mt-2 mb-2" id="questionFiltersRow">
+                        <details class="mobile-filter-drawer mt-2 mb-2" id="questionFiltersRow" open>
                             <summary class="mobile-filter-drawer-summary">
                                 <i class="bi bi-funnel me-1"></i>查询条件
                             </summary>
@@ -451,7 +452,7 @@
     <div class="upload-task-modal-card">
         <div class="d-flex justify-content-between align-items-center mb-2">
             <h3 class="h6 mb-0">题目生成任务</h3>
-            <button id="closeGenTaskModalBtn" type="button" class="btn btn-sm btn-outline-secondary">关闭</button>
+            <button id="closeGenTaskModalBtn" type="button" class="btn-close" aria-label="Close"></button>
         </div>
         <div id="genTaskList" class="d-grid gap-2"></div>
     </div>

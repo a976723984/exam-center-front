@@ -21,7 +21,7 @@
     const row = document.getElementById("publicPapersRow");
     if (!row) return;
     try {
-        const res = await fetch(`${ApiClient.API_BASE}/papers/public?page=1&size=6`);
+        const res = await fetch(`${ApiClient.API_BASE}/papers/public?page=1&size=6&sort=hot`);
         const data = await res.json();
         const items = data.items || [];
         if (!items.length) {
@@ -30,16 +30,27 @@
         }
         row.innerHTML = items.map((p) => `
             <div class="col-md-6 col-lg-4">
-                <div class="card border-0 shadow-sm h-100">
+                <div class="card border-0 shadow-sm h-100 public-paper-card" data-id="${p.id}" role="button" tabindex="0" style="cursor:pointer;">
                     <div class="card-body p-3">
                         <h6 class="card-title mb-2">${escapeHtml(p.title || "未命名")}</h6>
                         <div class="small text-secondary mb-2">分享者：${escapeHtml(p.ownerName || "-")}</div>
-                        <div class="small text-secondary mb-2">浏览 ${p.viewCount ?? 0} · 订阅 ${p.subscribeCount ?? 0} · 评分 ${p.averageRating != null ? p.averageRating : "-"}</div>
-                        <a class="btn btn-sm btn-outline-primary" href="./share.html?id=${p.id}">查看</a>
+                        <div class="small text-secondary mb-0">浏览 ${p.viewCount ?? 0} · 订阅 ${p.subscribeCount ?? 0} · 评分 ${p.averageRating != null ? p.averageRating : "-"}</div>
                     </div>
                 </div>
             </div>
         `).join("");
+        row.querySelectorAll(".public-paper-card[data-id]").forEach((card) => {
+            const paperId = Number(card.getAttribute("data-id"));
+            card.addEventListener("click", () => {
+                location.href = `./share.html?id=${paperId}`;
+            });
+            card.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    location.href = `./share.html?id=${paperId}`;
+                }
+            });
+        });
     } catch (e) {
         row.innerHTML = '<div class="col-12 text-secondary small">加载失败</div>';
     }

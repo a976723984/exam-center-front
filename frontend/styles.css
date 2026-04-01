@@ -1356,6 +1356,11 @@ button:active, .link-btn:active {
     padding: 10px;
 }
 
+.upload-task-item-title,
+.upload-task-item-status {
+    word-break: break-word;
+}
+
 .global-loading-mask {
     position: fixed;
     inset: 0;
@@ -1398,6 +1403,16 @@ button:active, .link-btn:active {
     font-size: 34px;
     font-weight: 800;
     margin-bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-brand-logo {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    flex-shrink: 0;
 }
 
 .auth-brand-subtitle {
@@ -2219,6 +2234,31 @@ body.phone-bind-open {
         );
         overflow: auto;
     }
+    .upload-task-modal-card {
+        max-height: min(
+            62dvh,
+            calc(
+                100dvh
+                - var(--mobile-bottom-nav-height)
+                - env(safe-area-inset-bottom, 0px)
+                - var(--mobile-modal-gap) * 2
+            )
+        );
+    }
+    .upload-task-item-title {
+        flex: 1 1 auto;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .upload-task-item-badge {
+        flex: 0 0 auto;
+        margin-left: auto;
+    }
+    #closeGenTaskModalBtn {
+        display: none;
+    }
 
     .mobile-bottom-nav-link {
         display: inline-flex;
@@ -2789,6 +2829,22 @@ button:focus-visible,
     gap: 8px;
     align-items: center;
     justify-content: center;
+}
+
+.home-view-all-btn {
+    border-radius: 999px !important;
+    padding: 0.35rem 0.8rem;
+    font-weight: 500;
+}
+
+.public-paper-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.public-paper-card:hover,
+.public-paper-card:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 0.6rem 1.1rem rgba(15, 23, 42, 0.12) !important;
 }
 
 @media (max-width: 768px) {

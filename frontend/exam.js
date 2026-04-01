@@ -158,12 +158,22 @@ function setMobileInfiniteLoadingVisible(key, visible) {
 }
 
 function saveGenTasksToStorage() {
-    const running = Array.from(genTaskMap.values())
-        .filter((t) => t.taskId && (t.status === "PENDING" || t.status === "RUNNING"))
-        .map((t) => ({ taskId: t.taskId, bankId: t.bankId, createdAt: t.createdAt }));
+    const tasks = Array.from(genTaskMap.values())
+        .map((t) => ({
+            localId: t.localId,
+            taskId: t.taskId || "",
+            bankId: t.bankId,
+            count: typeof t.count === "number" ? t.count : null,
+            status: t.status || "PENDING",
+            statusText: t.statusText || "",
+            questionsGenerated: typeof t.questionsGenerated === "number" ? t.questionsGenerated : null,
+            message: t.message || null,
+            createdAt: t.createdAt || Date.now(),
+        }))
+        .filter((t) => t.bankId && (t.taskId || t.status === "PENDING"));
     try {
         // 使用 localStorage：跨标签页/窗口可恢复任务角标与列表
-        localStorage.setItem(GEN_TASKS_STORAGE_KEY, JSON.stringify(running));
+        localStorage.setItem(GEN_TASKS_STORAGE_KEY, JSON.stringify(tasks));
     } catch (_) {}
 }
 
@@ -178,22 +188,24 @@ function loadPersistedGenTasks() {
         list.forEach((item) => {
             const taskId = item.taskId;
             const bankId = item.bankId;
-            if (!taskId || !bankId) return;
-            const localId = `gen-restored-${taskId}`;
+            if (!bankId) return;
+            const localId = item.localId || (taskId ? `gen-restored-${taskId}` : `gen-restored-${Date.now()}-${genTaskSeed++}`);
             if (genTaskMap.has(localId)) return;
             const task = {
                 localId,
-                taskId,
+                taskId: taskId || "",
                 bankId,
-                count: null,
-                status: "RUNNING",
-                statusText: "恢复中，正在查询进度...",
-                questionsGenerated: null,
-                message: null,
+                count: typeof item.count === "number" ? item.count : null,
+                status: item.status || "RUNNING",
+                statusText: item.statusText || ((item.status === "PENDING" || item.status === "RUNNING") ? "恢复中，正在查询进度..." : ""),
+                questionsGenerated: typeof item.questionsGenerated === "number" ? item.questionsGenerated : null,
+                message: item.message || null,
                 createdAt: item.createdAt || Date.now(),
             };
             genTaskMap.set(localId, task);
-            void monitorGenTask(localId);
+            if (task.taskId && (task.status === "PENDING" || task.status === "RUNNING")) {
+                void monitorGenTask(localId);
+            }
         });
         renderGenTasksUI();
     } catch (_) {}
@@ -787,6 +799,16 @@ async function cancelGenerateTask(bankId, taskId) {
     return res.json();
 }
 
+async function deleteGenerateTask(bankId, taskId) {
+    const res = await ApiClient.request(`/banks/${bankId}/questions/generate-tasks/${taskId}`, {
+        method: "DELETE",
+    });
+    if (!res.ok) {
+        const msg = await readErrorMessage(res, "删除任务失败");
+        throw new Error(msg);
+    }
+}
+
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -836,15 +858,18 @@ function renderGenTasksUI() {
         const cancelBtnHtml = (task.status === "RUNNING" || task.status === "PENDING")
             ? `<button class="btn btn-sm btn-outline-danger gen-task-cancel-btn" data-local-id="${escapeHtml(task.localId)}" ${task.cancelling ? "disabled" : ""}>${task.cancelling ? "中止中..." : "中止"}</button>`
             : "";
+        const deleteBtnHtml = (task.status === "SUCCESS" || task.status === "FAILED")
+            ? `<button class="btn btn-sm btn-outline-secondary gen-task-delete-btn" data-local-id="${escapeHtml(task.localId)}">删除</button>`
+            : "";
         return `
             <div class="upload-task-item">
-                <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
-                    <div class="fw-semibold">${bankName}</div>
-                    ${statusBadge}
+                <div class="upload-task-item-header d-flex justify-content-between align-items-start gap-2 mb-1">
+                    <div class="fw-semibold upload-task-item-title">${bankName}</div>
+                    <div class="upload-task-item-badge">${statusBadge}</div>
                 </div>
-                <div class="small text-secondary">${escapeHtml(statusText)}</div>
+                <div class="small text-secondary upload-task-item-status">${escapeHtml(statusText)}</div>
                 ${progressBarHtml}
-                <div class="mt-2 d-flex justify-content-end">${cancelBtnHtml}</div>
+                <div class="mt-2 d-flex justify-content-end gap-2">${cancelBtnHtml}${deleteBtnHtml}</div>
             </div>
         `;
     }).join("");
@@ -885,38 +910,27 @@ async function monitorGenTask(localId) {
                     await refreshQuestions(1);
                     await refreshPapers();
                 }
-                setTimeout(() => {
-                    genTaskMap.delete(localId);
-                    saveGenTasksToStorage();
-                    renderGenTasksUI();
-                }, 3000);
+                saveGenTasksToStorage();
                 return;
             }
             if (t.status === "FAILED") {
                 t.statusText = t.message || "生成失败";
                 renderGenTasksUI();
                 show(t.statusText, "danger");
-                setTimeout(() => {
-                    genTaskMap.delete(localId);
-                    saveGenTasksToStorage();
-                    renderGenTasksUI();
-                }, 5000);
+                saveGenTasksToStorage();
                 return;
             }
             if (t.status === "CANCELLED") {
                 t.statusText = t.message || "任务已中止";
                 renderGenTasksUI();
-                setTimeout(() => {
-                    genTaskMap.delete(localId);
-                    saveGenTasksToStorage();
-                    renderGenTasksUI();
-                }, 3000);
+                saveGenTasksToStorage();
                 return;
             }
             const total = t.count ?? 0;
             const done = t.questionsGenerated ?? 0;
             t.statusText = total > 0 ? `已生成 ${done}/${total} 道题目` : "正在生成...";
             renderGenTasksUI();
+            saveGenTasksToStorage();
         } catch (e) {
             const t = genTaskMap.get(localId);
             if (t) {
@@ -1400,6 +1414,13 @@ let mobileFilterRefreshTimer = 0;
 function collapseMobileQuestionFiltersDrawer() {
     if (!questionFiltersDrawer || !isMobileLike()) return;
     questionFiltersDrawer.removeAttribute("open");
+}
+
+function syncQuestionFiltersDrawerForViewport() {
+    if (!questionFiltersDrawer) return;
+    if (isMobileLike()) return;
+    // 网页端始终展示查询条件，避免折叠状态导致看不到筛选项
+    questionFiltersDrawer.setAttribute("open", "");
 }
 
 function triggerMobileFilterRefresh({ immediate = false } = {}) {
@@ -2734,7 +2755,7 @@ async function initDialogGenOutlines(bankId) {
     bindDialogGenOutlineSelectionEvents();
 
     dialogGenOutlineWrap.innerHTML = "";
-    dialogGenOutlineHint.textContent = "加载大纲块中…";
+    dialogGenOutlineHint.textContent = "加载知识文件与大纲中…";
 
     if (!bankId) {
         dialogGenOutlineHint.textContent = "未选择题库";
@@ -2764,30 +2785,51 @@ async function initDialogGenOutlines(bankId) {
         const docId = Number(doc.id);
         if (!docId) continue;
 
+        const fileName = doc.fileName || `文档 ${docId}`;
+        const fileBaseName = stripFileExtension(fileName);
         let outline;
         try {
             outline = await fetchDocumentOutline(bankId, docId);
         } catch (_) {
-            continue;
+            outline = { blocks: [] };
         }
         const blocks = Array.isArray(outline?.blocks) ? outline.blocks : [];
-        if (!blocks.length) continue;
-
-        const blocksHtml = blocks
-            .map((b) => {
-                const idx = b.index ?? 0;
-                const key = `${docId}:${idx}`;
-                const fileName = doc.fileName || `文档 ${docId}`;
-                const fileBaseName = stripFileExtension(fileName);
+        const blocksHtml = blocks.length
+            ? blocks
+                .map((b) => {
+                    const idx = b.index ?? 0;
+                    const key = `${docId}:${idx}`;
+                    dialogGenOutlineGuideMap.set(key, {
+                        title: b.title || "",
+                        content: b.content || "",
+                        sourceLabel: `${fileBaseName}-${(b.title ? String(b.title) : `块 ${idx}`)}`,
+                    });
+                    const label = b.title ? String(b.title) : `块 ${idx}`;
+                    const tooltip = b.content ? String(b.content) : "";
+                    return `
+                        <label class="form-check form-check-inline me-0 mb-1" style="min-width: 180px;">
+                            <input
+                                class="form-check-input me-1"
+                                type="checkbox"
+                                data-outline-doc-id="${docId}"
+                                data-outline-block-cb
+                                data-guide-key="${key}"
+                                value="${key}"
+                            />
+                            <span class="small text-truncate" title="${escapeHtml(tooltip)}">${escapeHtml(label)}</span>
+                        </label>
+                    `;
+                })
+                .join("")
+            : (() => {
+                const key = `${docId}:__full__`;
                 dialogGenOutlineGuideMap.set(key, {
-                    title: b.title || "",
-                    content: b.content || "",
-                    sourceLabel: `${fileBaseName}-${(b.title ? String(b.title) : `块 ${idx}`)}`,
+                    title: fileBaseName,
+                    content: "",
+                    sourceLabel: fileBaseName,
                 });
-                const label = b.title ? String(b.title) : `块 ${idx}`;
-                const tooltip = b.content ? String(b.content) : "";
                 return `
-                    <label class="form-check form-check-inline me-0 mb-1" style="min-width: 180px;">
+                    <label class="form-check form-check-inline me-0 mb-1">
                         <input
                             class="form-check-input me-1"
                             type="checkbox"
@@ -2796,13 +2838,11 @@ async function initDialogGenOutlines(bankId) {
                             data-guide-key="${key}"
                             value="${key}"
                         />
-                        <span class="small text-truncate" title="${escapeHtml(tooltip)}">${escapeHtml(label)}</span>
+                        <span class="small">整份知识文件</span>
                     </label>
                 `;
-            })
-            .join("");
+            })();
 
-        const fileName = doc.fileName || `文档 ${docId}`;
         docCards.push(`
             <div class="border rounded-3 p-3 bg-light">
                 <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
@@ -2815,7 +2855,7 @@ async function initDialogGenOutlines(bankId) {
                         />
                         <span class="small fw-semibold">${escapeHtml(fileName)}</span>
                     </label>
-                    <span class="small text-secondary">${blocks.length} 个大纲块</span>
+                    <span class="small text-secondary">${blocks.length ? `${blocks.length} 个大纲块` : "无大纲（可按整份文件生成）"}</span>
                 </div>
                 <div class="d-flex flex-wrap gap-2">${blocksHtml}</div>
             </div>
@@ -2823,12 +2863,12 @@ async function initDialogGenOutlines(bankId) {
     }
 
     if (!docCards.length) {
-        dialogGenOutlineHint.textContent = "当前题库暂无可用的大纲块";
+        dialogGenOutlineHint.textContent = "当前题库暂无可用的知识文件或大纲";
         dialogGenOutlineWrap.innerHTML = "";
         return;
     }
 
-    dialogGenOutlineHint.textContent = "已加载，可按需勾选";
+    dialogGenOutlineHint.textContent = "已加载，可按需勾选知识文件或大纲块";
     dialogGenOutlineWrap.innerHTML = docCards.join("");
 }
 
@@ -2865,6 +2905,7 @@ function runGenerateQuestionTask(bankId, count, types, outlineGuides) {
     };
     genTaskMap.set(localId, task);
     renderGenTasksUI();
+    saveGenTasksToStorage();
     startGenerateTaskAsync(bankId, count, types, outlineGuides)
         .then((taskId) => {
             const t = genTaskMap.get(localId);
@@ -2879,7 +2920,12 @@ function runGenerateQuestionTask(bankId, count, types, outlineGuides) {
             void monitorGenTask(localId);
         })
         .catch((e) => {
-            genTaskMap.delete(localId);
+            const t = genTaskMap.get(localId);
+            if (t) {
+                t.status = "FAILED";
+                t.message = e.message || "提交生成任务失败";
+                t.statusText = t.message;
+            }
             saveGenTasksToStorage();
             renderGenTasksUI();
             show(e.message || "提交生成任务失败", "danger");
@@ -2998,12 +3044,29 @@ if (genTaskModalBackdrop) {
 }
 if (genTaskList) {
     genTaskList.addEventListener("click", async (ev) => {
-        const btn = ev.target && ev.target.closest ? ev.target.closest(".gen-task-cancel-btn") : null;
-        if (!btn) return;
-        const localId = btn.getAttribute("data-local-id");
+        const cancelBtn = ev.target && ev.target.closest ? ev.target.closest(".gen-task-cancel-btn") : null;
+        const delBtn = ev.target && ev.target.closest ? ev.target.closest(".gen-task-delete-btn") : null;
+        const actionBtn = cancelBtn || delBtn;
+        if (!actionBtn) return;
+        const localId = actionBtn.getAttribute("data-local-id");
         if (!localId) return;
         const task = genTaskMap.get(localId);
-        if (!task || !task.taskId) return;
+        if (!task) return;
+        if (delBtn) {
+            if (task.taskId) {
+                try {
+                    await deleteGenerateTask(task.bankId, task.taskId);
+                } catch (e) {
+                    show(e?.message || "删除任务失败", "danger");
+                    return;
+                }
+            }
+            genTaskMap.delete(localId);
+            saveGenTasksToStorage();
+            renderGenTasksUI();
+            return;
+        }
+        if (!task.taskId) return;
         try {
             task.cancelling = true;
             renderGenTasksUI();
@@ -3458,6 +3521,9 @@ document.addEventListener("click", (e) => {
     if (questionFiltersDrawer.contains(e.target)) return;
     collapseMobileQuestionFiltersDrawer();
 });
+window.addEventListener("resize", () => {
+    syncQuestionFiltersDrawerForViewport();
+});
 moduleMenuBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
         const key = btn.getAttribute("data-module");
@@ -3508,6 +3574,7 @@ moduleTags.addEventListener("click", (e) => {
     // 移动端：初始化阶段即隐藏“全选/分页”相关 UI，避免后端未返回时闪现
     setMobilePagerUiHidden(isMobileLike());
     try {
+        syncQuestionFiltersDrawerForViewport();
         await initBanks();
         renderModuleTabs();
         refreshModulePanels();
