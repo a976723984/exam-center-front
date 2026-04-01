@@ -42,6 +42,12 @@
         topbar.setAttribute("aria-label", title);
         const backBtn = topbar.querySelector(".web-topbar-back-btn");
         backBtn?.addEventListener("click", () => {
+            try {
+                if (typeof window.__mobileTopbarBackHandler === "function") {
+                    const handled = window.__mobileTopbarBackHandler();
+                    if (handled) return;
+                }
+            } catch (_) {}
             if (window.history.length > 1) {
                 window.history.back();
                 return;

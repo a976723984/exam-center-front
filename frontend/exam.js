@@ -813,6 +813,19 @@ function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function formatDateTimeDisplay(value) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    const pad = (n) => String(n).padStart(2, "0");
+    const y = date.getFullYear();
+    const m = pad(date.getMonth() + 1);
+    const d = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const mm = pad(date.getMinutes());
+    return `${y}-${m}-${d} ${hh}:${mm}`;
+}
+
 function renderGenTasksUI() {
     const all = Array.from(genTaskMap.values()).sort((a, b) => b.createdAt - a.createdAt);
     const activeCount = all.filter((t) => t.status === "PENDING" || t.status === "RUNNING").length;
@@ -1045,6 +1058,11 @@ async function paperDetail(paperId, includeAnswer = false) {
     const res = await ApiClient.request(`/papers/${paperId}?includeAnswer=${includeAnswer}`);
     if (!res.ok) throw new Error("读取试卷详情失败");
     return res.json();
+}
+
+async function deletePaper(paperId) {
+    const res = await ApiClient.request(`/papers/${paperId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await readErrorMessage(res, "删除试卷失败"));
 }
 
 async function startRandomExam(payload) {
@@ -1975,13 +1993,17 @@ async function refreshPapers({ page = currentPaperPage, append = false } = {}) {
                 ? `<button class="btn btn-sm btn-outline-secondary" data-stats data-paper-id="${p.id}">统计</button><button class="btn btn-sm btn-outline-warning" data-unshare data-paper-id="${p.id}">取消分享</button>`
                 : `<button class="btn btn-sm btn-outline-success" data-share data-paper-id="${p.id}">分享到公共区</button>`)
             : "";
+        const deleteBtnHtml = isMine
+            ? `<button class="btn btn-sm btn-outline-danger" data-delete-paper data-paper-id="${p.id}">删除</button>`
+            : "";
         div.innerHTML = `
             <div class="paper-list-item-content flex-grow-1">
                 <div class="fw-semibold">${p.title}</div>
-                <div class="text-secondary small">模式：${p.mode}</div>
+                <div class="text-secondary small">创建时间：${formatDateTimeDisplay(p.createdAt)}</div>
             </div>
             <div class="d-flex gap-1 align-items-center">
                 ${shareBtnHtml}
+                ${deleteBtnHtml}
             </div>
         `;
         const contentArea = div.querySelector(".paper-list-item-content");
@@ -2078,6 +2100,24 @@ async function refreshPapers({ page = currentPaperPage, append = false } = {}) {
                     await refreshPapers();
                 } catch (err) {
                     show(err.message || "操作失败", "danger");
+                }
+            });
+        }
+        const deleteBtn = div.querySelector("[data-delete-paper]");
+        if (deleteBtn) {
+            deleteBtn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                if (!window.confirm("确认删除该试卷？删除后不可恢复，相关考试记录也将一并删除。")) return;
+                try {
+                    await deletePaper(p.id);
+                    show("试卷已删除");
+                    if (!paperDetailSection.classList.contains("d-none")) {
+                        paperDetailSection.classList.add("d-none");
+                        paperListSection.classList.remove("d-none");
+                    }
+                    await refreshPapers();
+                } catch (err) {
+                    show(err.message || "删除试卷失败", "danger");
                 }
             });
         }
@@ -3187,6 +3227,21 @@ backRecordListBtn.addEventListener("click", () => {
 backToOperationBtn.addEventListener("click", () => {
     openModule("operation");
 });
+
+window.__mobileTopbarBackHandler = function mobileTopbarBackHandler() {
+    if (activeModule === "papers" && paperDetailSection && !paperDetailSection.classList.contains("d-none")) {
+        paperDetailSection.classList.add("d-none");
+        paperListSection.classList.remove("d-none");
+        return true;
+    }
+    if (activeModule === "records" && recordDetailSection && !recordDetailSection.classList.contains("d-none")) {
+        clearExamDetailTimer();
+        recordDetailSection.classList.add("d-none");
+        recordListSection.classList.remove("d-none");
+        return true;
+    }
+    return false;
+};
 
 manualPaperBtn.addEventListener("click", async () => {
     const ids = Array.from(selectedQuestionIds);
