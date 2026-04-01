@@ -12,6 +12,30 @@ const trialCountdownEl = document.getElementById("trialCountdown");
 let currentPeriod = "monthly";
 let pendingPlan = null;
 let groupQrUrl = "";
+const DEFAULT_GROUP_QR_URL = "./group.jpg";
+const FALLBACK_GROUP_QR_URL = "./logo.png";
+
+function showGroupQrImage(url) {
+    if (!groupQrImage) return;
+    groupQrImage.onerror = () => {
+        if (groupQrImage.src.includes("logo.png")) {
+            groupQrImage.style.display = "none";
+            if (paymentModalTip) {
+                paymentModalTip.textContent = "加群二维码图片加载失败，请检查 frontend/group.jpg 是否存在。";
+                paymentModalTip.classList.remove("d-none");
+            }
+            return;
+        }
+        groupQrImage.src = FALLBACK_GROUP_QR_URL;
+        groupQrImage.style.display = "inline-block";
+        if (paymentModalTip) {
+            paymentModalTip.textContent = "未找到 group.jpg，已回退显示默认图片。";
+            paymentModalTip.classList.remove("d-none");
+        }
+    };
+    groupQrImage.src = url;
+    groupQrImage.style.display = "inline-block";
+}
 
 function escapeHtml(text) {
     if (text == null) return "";
@@ -42,9 +66,9 @@ function getPlanFeatures(plan) {
     if (plan.id === "trial") {
         features.push("白塔币：注册赠送 100");
     } else if (plan.id === "personal") {
-        features.push("白塔币：每月赠送 300");
+        features.push("白塔币：每月赠送 200");
     } else if (plan.id === "advanced") {
-        features.push("白塔币：每月赠送 800");
+        features.push("白塔币：每月赠送 500");
     } else {
         features.push("白塔币：按余额扣减");
     }
@@ -100,16 +124,12 @@ function openConsultModal(planId) {
     const plan = PlanConfig.getPlan(planId);
     pendingPlan = { planId, planName: plan.name, period: currentPeriod };
 
-    if (!groupQrUrl) {
-        if (paymentModalTip) {
-            paymentModalTip.textContent = "暂未配置加群二维码，请联系管理员。";
-            paymentModalTip.classList.remove("d-none");
-        } else {
-            alert("暂未配置加群二维码，请联系管理员。");
-        }
-    } else if (groupQrImage) {
-        groupQrImage.src = groupQrUrl;
-        groupQrImage.style.display = "inline-block";
+    if (paymentModalTip) {
+        paymentModalTip.classList.add("d-none");
+        paymentModalTip.textContent = "";
+    }
+    if (groupQrImage) {
+        showGroupQrImage(groupQrUrl);
     }
 
     if (paymentModalPlan) {
@@ -140,8 +160,8 @@ function closePaymentModal() {
         PlanConfig.setCurrentPlanId(user.planId);
     }
 
-    // 读取后端返回的试用剩余天数与加群二维码地址
-    groupQrUrl = profile?.groupQrUrl || "";
+    // 固定使用前端图片，避免后端地址异常导致弹窗不显示
+    groupQrUrl = DEFAULT_GROUP_QR_URL;
     const trialDaysLeft = typeof profile?.trialDaysLeft === "number" ? profile.trialDaysLeft : null;
     if (trialCountdownEl && trialDaysLeft != null) {
         if (trialDaysLeft > 0) {
@@ -197,9 +217,9 @@ function closePaymentModal() {
         if (coinBuyRow) {
             const products = [
                 { coins: 50, price: 5 },
-                { coins: 100, price: 8 },
-                { coins: 200, price: 15 },
-                { coins: 500, price: 28 },
+                { coins: 100, price: 8.99 },
+                { coins: 200, price: 16.99 },
+                { coins: 400, price: 32.99 },
             ];
             coinBuyRow.innerHTML = products
                 .map((p) => `<button type="button" class="btn btn-sm btn-outline-primary coin-buy-btn" data-coins="${p.coins}" data-price="${p.price}">买 ${p.coins} 币 · ¥${p.price}</button>`)
@@ -216,16 +236,8 @@ function closePaymentModal() {
                         paymentModalTip.classList.add("d-none");
                         paymentModalTip.textContent = "";
                     }
-                    if (!groupQrUrl) {
-                        if (paymentModalTip) {
-                            paymentModalTip.textContent = "暂未配置收款二维码，请联系管理员。";
-                            paymentModalTip.classList.remove("d-none");
-                        } else {
-                            alert("暂未配置收款二维码，请联系管理员。");
-                        }
-                    } else if (groupQrImage) {
-                        groupQrImage.src = groupQrUrl;
-                        groupQrImage.style.display = "inline-block";
+                    if (groupQrImage) {
+                        showGroupQrImage(groupQrUrl);
                     }
                     if (paymentModalBackdrop) paymentModalBackdrop.classList.remove("d-none");
                 });
