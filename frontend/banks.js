@@ -768,16 +768,32 @@ async function fetchOutlineGenerateTaskPage(bankId, taskId, page, size) {
 
 function renderOutlineDocList() {
     if (!outlineDocList) return;
+    const bankId = outlineState.bankId;
     outlineDocList.innerHTML = outlineState.documents.map((doc) => {
         const active = Number(doc.id) === Number(outlineState.selectedDocId);
         const safeName = escapeHtml(doc.fileName || "");
         const status = escapeHtml(formatDocStatus(doc.status, doc.parseStatus));
+        const progressKey = bankId ? getOutlineTaskKey(bankId, doc.id) : "";
+        const progress = progressKey ? outlineDocProgressMap.get(progressKey) : null;
+        const progressPercent = Math.max(0, Math.min(100, Math.round(Number(progress?.percent ?? 0))));
+        const progressText = escapeHtml(progress?.text || "解析中…");
+        const progressHtml = progress
+            ? `
+                <div class="outline-doc-pick__progress doc-outline-progress mt-2">
+                    <div class="small text-secondary mb-1 text-start">${progressText}</div>
+                    <div class="progress doc-outline-progress__bar" role="progressbar" aria-label="大纲解析进度">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:${progressPercent}%">${progressPercent}%</div>
+                    </div>
+                </div>
+            `
+            : "";
         return `
             <button type="button" class="outline-doc-pick w-100${active ? " is-active" : ""}"
                 data-outline-pick="${doc.id}"
                 >
                 <span class="d-block fw-semibold text-truncate" title="${safeName}">${safeName}</span>
-                <span class="small text-secondary">${status}</span>
+                <span class="small text-secondary d-block text-start">${status}</span>
+                ${progressHtml}
             </button>
         `;
     }).join("");
@@ -827,6 +843,7 @@ function ensureOutlineDocProgressPolling(bankId, docId, taskId) {
     if (!outlineDocProgressMap.has(taskKey)) {
         outlineDocProgressMap.set(taskKey, { percent: 0, text: "解析中…" });
         render(banksCache, bankDocsMapCache);
+        renderOutlineDocList();
     }
     const normalizedTaskId = String(taskId);
     pollOutlineGenerateTaskStatus(bankId, normalizedTaskId, {
@@ -835,12 +852,14 @@ function ensureOutlineDocProgressPolling(bankId, docId, taskId) {
             const stage = normalizeOutlineStageText(t?.currentStage);
             outlineDocProgressMap.set(taskKey, { percent: pct ?? 0, text: stage });
             render(banksCache, bankDocsMapCache);
+            renderOutlineDocList();
         },
     })
         .then(() => {
             clearPersistedOutlineTaskId(bankId, docId);
             outlineDocProgressMap.delete(taskKey);
             render(banksCache, bankDocsMapCache);
+            renderOutlineDocList();
         })
         .catch((err) => {
             const message = String(err?.message || "");
@@ -849,6 +868,7 @@ function ensureOutlineDocProgressPolling(bankId, docId, taskId) {
             }
             outlineDocProgressMap.delete(taskKey);
             render(banksCache, bankDocsMapCache);
+            renderOutlineDocList();
         })
         .finally(() => {
             outlineDocProgressPollingMap.delete(taskKey);
@@ -1123,6 +1143,9 @@ async function loadOutlinePageIntoModal() {
                 return;
             }
             showOutlineParseProgress(0, "继续显示大纲解析任务…");
+            outlineDocProgressMap.set(taskKey, { percent: 0, text: "继续显示大纲解析任务…" });
+            render(banksCache, bankDocsMapCache);
+            renderOutlineDocList();
             let taskPromise = outlineState.outlineTaskPromiseByDocId.get(taskKey);
             if (!taskPromise) {
                 taskPromise = Promise.resolve(taskId);
@@ -1142,6 +1165,7 @@ async function loadOutlinePageIntoModal() {
                         showOutlineParseProgress(pct ?? 0, stage);
                         outlineDocProgressMap.set(taskKey, { percent: pct ?? 0, text: stage });
                         render(banksCache, bankDocsMapCache);
+                        renderOutlineDocList();
                     },
                 },
             );
@@ -1166,12 +1190,16 @@ async function loadOutlinePageIntoModal() {
             outlineState.openMode = "view";
             outlineDocProgressMap.delete(taskKey);
             render(banksCache, bankDocsMapCache);
+            renderOutlineDocList();
             setOutlineNavDisabled(!outlineState.infinite);
             return;
         }
 
         // 重新解析：POST ?restart=true 并排程轮询
         showOutlineParseProgress(0, "重新解析大纲…");
+        outlineDocProgressMap.set(taskKey, { percent: 0, text: "重新解析大纲…" });
+        render(banksCache, bankDocsMapCache);
+        renderOutlineDocList();
         let taskPromise = outlineState.outlineTaskPromiseByDocId.get(taskKey);
         if (!taskPromise) {
             taskPromise = startOutlineGenerateTaskAsync(bankId, docId, true)
@@ -1201,6 +1229,7 @@ async function loadOutlinePageIntoModal() {
                     showOutlineParseProgress(pct ?? 0, stage);
                     outlineDocProgressMap.set(taskKey, { percent: pct ?? 0, text: stage });
                     render(banksCache, bankDocsMapCache);
+                    renderOutlineDocList();
                 },
             },
         );
@@ -1223,6 +1252,7 @@ async function loadOutlinePageIntoModal() {
         outlineState.openMode = "view";
         outlineDocProgressMap.delete(taskKey);
         render(banksCache, bankDocsMapCache);
+        renderOutlineDocList();
         setOutlineNavDisabled(!outlineState.infinite);
     } catch (err) {
         console.error("[outline] render failed", {
@@ -1243,6 +1273,7 @@ async function loadOutlinePageIntoModal() {
         hideOutlineParseProgress();
         outlineDocProgressMap.delete(taskKey);
         render(banksCache, bankDocsMapCache);
+        renderOutlineDocList();
         setOutlineNavDisabled(true);
         outlineContent.classList.remove("outline-content-box--grid");
         outlineContent.textContent = err?.message || "加载大纲失败";
@@ -1343,9 +1374,9 @@ function renderDocumentsGrid(bankId, docs, coverUrl) {
                 const progressText = escapeHtml(progress?.text || "解析中…");
                 const progressHtml = progress
                     ? `
-                            <div class="mt-2">
+                            <div class="doc-outline-progress mt-2">
                                 <div class="small text-secondary mb-1">${progressText}</div>
-                                <div class="progress" role="progressbar" aria-label="大纲解析进度">
+                                <div class="progress doc-outline-progress__bar" role="progressbar" aria-label="大纲解析进度">
                                     <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:${progressPercent}%">${progressPercent}%</div>
                                 </div>
                             </div>
@@ -1353,18 +1384,20 @@ function renderDocumentsGrid(bankId, docs, coverUrl) {
                     : "";
                 return `
                     <div class="${cardClass}" data-outline-bank="${bankId}" data-outline-doc="${doc.id}">
-                        ${cover}
-                        <div class="doc-body">
-                            <div class="doc-name" title="${safeName}">${safeName}</div>
-                            <div class="doc-status">${escapeHtml(formatDocStatus(doc.status, doc.parseStatus))}</div>
-                            <div class="doc-meta d-flex justify-content-end align-items-center gap-2">
-                                <div class="d-flex gap-1">
-                                    <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" data-doc-outline-parse="${bankId}-${doc.id}">大纲解析</button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-doc-del="${bankId}-${doc.id}">删 除</button>
+                        <div class="doc-card__main">
+                            ${cover}
+                            <div class="doc-body">
+                                <div class="doc-name" title="${safeName}">${safeName}</div>
+                                <div class="doc-status">${escapeHtml(formatDocStatus(doc.status, doc.parseStatus))}</div>
+                                <div class="doc-meta d-flex justify-content-end align-items-center gap-2">
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" data-doc-outline-parse="${bankId}-${doc.id}">大纲解析</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-doc-del="${bankId}-${doc.id}">删 除</button>
+                                    </div>
                                 </div>
                             </div>
-                            ${progressHtml}
                         </div>
+                        ${progressHtml}
                     </div>
                 `;
             }).join("")}
@@ -1541,6 +1574,9 @@ function render(banks, docsMap) {
         });
         bankList.appendChild(div);
     });
+    if (outlineModalBackdrop && !outlineModalBackdrop.classList.contains("d-none")) {
+        renderOutlineDocList();
+    }
 }
 
 async function refresh() {
