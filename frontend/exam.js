@@ -761,9 +761,10 @@ async function listDocuments(bankId) {
     return res.json();
 }
 
-async function startGenerateTaskAsync(bankId, count, types, outlineGuides) {
+async function startGenerateTaskAsync(bankId, count, types, outlineGuides, documentIds) {
     const payload = { count, types };
     if (Array.isArray(outlineGuides) && outlineGuides.length) payload.outlineGuides = outlineGuides;
+    if (Array.isArray(documentIds) && documentIds.length) payload.documentIds = documentIds;
     const res = await ApiClient.request(`/banks/${bankId}/questions/generate/async`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2749,6 +2750,18 @@ function getSelectedDialogGenOutlineGuides() {
     return out;
 }
 
+function getSelectedDialogGenDocumentIds() {
+    if (!dialogGenOutlineWrap) return [];
+    const checked = Array.from(dialogGenOutlineWrap.querySelectorAll("input[data-outline-block-cb]:checked"));
+    const ids = new Set();
+    checked.forEach((cb) => {
+        const raw = cb.getAttribute("data-outline-doc-id");
+        const id = Number(raw);
+        if (id) ids.add(id);
+    });
+    return Array.from(ids);
+}
+
 let dialogGenOutlineChangeBound = false;
 function bindDialogGenOutlineSelectionEvents() {
     if (!dialogGenOutlineWrap || dialogGenOutlineChangeBound) return;
@@ -2918,7 +2931,7 @@ function sanitizeGuideLabel(label) {
         .trim();
 }
 
-function runGenerateQuestionTask(bankId, count, types, outlineGuides) {
+function runGenerateQuestionTask(bankId, count, types, outlineGuides, documentIds) {
     const localId = `gen-${Date.now()}-${genTaskSeed++}`;
     const task = {
         localId,
@@ -2934,7 +2947,7 @@ function runGenerateQuestionTask(bankId, count, types, outlineGuides) {
     genTaskMap.set(localId, task);
     renderGenTasksUI();
     saveGenTasksToStorage();
-    startGenerateTaskAsync(bankId, count, types, outlineGuides)
+    startGenerateTaskAsync(bankId, count, types, outlineGuides, documentIds)
         .then((taskId) => {
             const t = genTaskMap.get(localId);
             if (t) {
@@ -2995,6 +3008,8 @@ document.getElementById("generateQuestionModalConfirm")?.addEventListener("click
         }
     }
     const outlineGuides = getSelectedDialogGenOutlineGuides();
+    const selectedDocIds = getSelectedDialogGenDocumentIds();
+    const documentIds = selectedDocIds;
     if (!types.length) {
         show("请至少选择一种题型", "danger");
         return;
@@ -3005,7 +3020,7 @@ document.getElementById("generateQuestionModalConfirm")?.addEventListener("click
     }
     bootstrap.Modal.getInstance(document.getElementById("generateQuestionModal"))?.hide();
     await runWithButtonLoading(genBtn, async () => {
-        runGenerateQuestionTask(bankId, count, types, outlineGuides);
+        runGenerateQuestionTask(bankId, count, types, outlineGuides, documentIds);
     }, "提交中...");
 });
 
